@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 typedef uint8_t bit;
 typedef int16_t int16;
 
@@ -19,6 +21,8 @@ typedef enum base {
 char * to_string(number *, base);
 int16 find_r(number * n);
 void run_tests();
+
+number * shift(number *, int16);
 
 number * new(int16 length) {
     number * ret = malloc(sizeof(number));

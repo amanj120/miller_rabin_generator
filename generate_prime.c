@@ -12,23 +12,6 @@ int16 find_r(number * n) {
     return ret;
 }
 
-// negative indicates right shift, positive indicates left shift
-number * shift(number * n, int16 s) { 
-    int16 length = n -> length + s;
-    number * ret = new(length);
-    if (ret == NULL) {
-        return NULL;
-    }
-    for (int i = 0; i < length; i++) {
-        if (s >=0) {
-            (ret -> data)[i + s] = (n -> data)[i];
-        } else {
-            (ret -> data)[i] = (n -> data)[i + s];
-        }
-    }
-    return ret;
-}
-
 // return a squared mod n:
 number * sqmodn(number * a, number * n) {   
     return NULL;
