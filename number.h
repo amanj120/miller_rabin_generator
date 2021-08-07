@@ -5,7 +5,7 @@ typedef uint16_t int16;
 
 typedef struct number {
     int16 length;    //number of bits in the number
-    bit *data;      //binary representation of the number
+    bit * data;      //binary representation of the number
 } number;
 
 typedef enum base {
@@ -14,3 +14,7 @@ typedef enum base {
     decimal,
     hexadecimal,
 } base;
+
+char * to_string(number *, base);
+
+void run_tests();

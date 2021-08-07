@@ -24,7 +24,7 @@ number * generate_random_number(int16 length) {
     if (ret == NULL) {
         return NULL;
     }
-    bit *data = malloc(length * sizeof(bit));
+    bit * data = malloc(length * sizeof(bit));
     if (data == NULL) {
         free(ret);
         return NULL;
@@ -45,7 +45,6 @@ void delete(number * n) {
 }
 
 int main(int argc, char *argv[]) {
+    run_tests();
     srand((unsigned)time(NULL));
-    printf("hello\n");
-    printf("%d, %d, %d %d, %d\n", rand(), rand(), rand(), rand(), rand());
 }
