@@ -1,7 +1,8 @@
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef uint8_t bit;
-typedef uint16_t int16;
+typedef int16_t int16;
 
 typedef struct number {
     int16 length;    //number of bits in the number
@@ -16,5 +17,5 @@ typedef enum base {
 } base;
 
 char * to_string(number *, base);
-
+int16 find_r(number * n);
 void run_tests();

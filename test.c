@@ -59,12 +59,32 @@ void test_string_0x2() {
     testoct(data, 2, "0o2");
 }
 
+void test_find_r() {
+    bit datas[5][10] = {
+        {1,0,0,0,1,0,0,1},
+        {1,1,0,1},
+        {1,0,0,1,0,0,1},
+        {1,0,0,0,0,0,0,0,0,1},
+        {1,1,1,1,1},
+    };
+    int16 lengths[] = {8, 4, 7, 10, 5};
+    int16 ans[] = {4, 1, 3, 9, 1};
+    for (int i = 0; i < 5; i++) {
+        number * n = &(number) {
+            .data = datas[i],
+            .length = lengths[i]
+        };
+        int16 r = find_r(n);
+        printf("expected: %d: %d\n", ans[i], r);
+    }
+}
 
 void run_tests() {
+    test_string_0x2();
+    test_string_0x5();
+    test_string_0x05();
     test_string_0x53();
     test_string_0xa3();
-    test_string_0x05();
-    test_string_0x5();
     test_string_0x10b();
-    test_string_0x2();
+    test_find_r();
 }

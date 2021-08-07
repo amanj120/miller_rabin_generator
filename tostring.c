@@ -52,8 +52,6 @@ static char * to_hex(number * n) {
         num_digits += 1;
     }
 
-    // printf("remiander: %d, num_digits: %d\n", remainder, num_digits);
-
     char * ret = malloc(num_digits + 1);
     if (ret == NULL) {
         return NULL;
