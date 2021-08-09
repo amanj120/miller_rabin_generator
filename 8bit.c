@@ -110,11 +110,11 @@ void mult(byte *src1, byte *src2, byte *dest, byte size) {
 // size = log_2(size of n)
 // algorithm: binary search for q
 void mod(byte *a, byte *n, byte *dest, byte size) {
-	printf("\ncalculating ");
-	print(a, size + 1);
-	printf(" mod ");
-	print(n, size);
-	printf("\n");
+	// printf("\ncalculating ");
+	// print(a, size + 1);
+	// printf(" mod ");
+	// print(n, size);
+	// printf("\n");
 
 	clear(dest, size);
 
@@ -139,19 +139,19 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 		rshift(q_mid, 1, size);
 		mult(q_mid, n, prod, size);
 
-		printf("lo: ");
-		print(q_lo, size);
-		printf(" high: ");
-		print(q_hi, size);
-		printf(" mid: ");
-		print(q_mid, size);
-		printf(" prod: ");
-		print(prod, size + 1);
-		printf(" n: ");
-		print(n, size);
-		printf(" a: ");
-		print(a, size + 1);
-		printf(" \n");
+		// printf("lo: ");
+		// print(q_lo, size);
+		// printf(" high: ");
+		// print(q_hi, size);
+		// printf(" mid: ");
+		// print(q_mid, size);
+		// printf(" prod: ");
+		// print(prod, size + 1);
+		// printf(" n: ");
+		// print(n, size);
+		// printf(" a: ");
+		// print(a, size + 1);
+		// printf(" \n");
 
 		if (compare(prod, a, size + 1) < 0) {
 			add_const(q_mid, 0, q_lo, size);
@@ -164,18 +164,17 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 		}
 	}
 
+	// sub(a, prod, dest, size);
+
 	// byte *dest = new (size);
 	byte zero[(1 << size)];
 	clear(zero, size);
 
 	if (compare(q_mid, zero, size) == 0) {
 		copy(a, dest, size);
-		return;
+	} else {
+		sub(a, prod, dest, size);
 	}
-
-	sub(a, prod, dest, size);
-
-	// return dest;
 }
 
 // compute a^d mod n and store in dest
@@ -191,23 +190,23 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
 	for (int i = 0; i < 1 << (size); i++) {
 		for (int j = 0; j < 8; j++) {
 
-			printf("cur a: ");
-			print(cur_a, size);
-			printf(", exp: %d value: %d, new cur_a: ", (i * 8 + j),
-				   (d[i] >> j) & 1);
+			// printf("cur a: ");
+			// print(cur_a, size);
+			// printf(", exp: %d value: %d, new cur_a: ", (i * 8 + j),
+			//	   (d[i] >> j) & 1);
 
 			if ((d[i] >> j) & 1 == 1) {
 				mult(cur_a, prod, temp, size);
 				mod(temp, n, prod, size);
 			}
 			mult(cur_a, cur_a, temp, size);
-			print(temp, size + 1);
-			printf(" new cur a mod n: ");
+			// print(temp, size + 1);
+			// printf(" new cur a mod n: ");
 			mod(temp, n, cur_a, size);
-			print(cur_a, size);
-			printf(" new prod: ");
-			print(prod, size);
-			printf("\n");
+			// print(cur_a, size);
+			// printf(" new prod: ");
+			// print(prod, size);
+			// printf("\n");
 		}
 	}
 
@@ -278,7 +277,7 @@ int main(int argc, char *argv[]) {
 	free(aa);
 	free(modulo);
 
-	byte base[2] = {0x03, 0x00};
+	byte base[2] = {0x17, 0x00};
 	byte n[2] = {0x23, 0x02};
 	byte exp[2] = {0x22, 0x02};
 	byte dest[2] = {0x00, 0x00};
