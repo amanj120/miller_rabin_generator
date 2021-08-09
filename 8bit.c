@@ -124,8 +124,7 @@ uint8_t * amodn(uint8_t * a, uint8_t * n, uint8_t size) {
         q_hi[i] = 0xff;
     }
 
-    int iter = 0;
-    while (compare(q_lo, q_hi, size) == -1) {
+    while (compare(q_lo, q_hi, size) != 0) {
         aaddb(q_hi, q_lo, q_mid, size);
         rshift(q_mid, 1, size);
         
@@ -154,9 +153,6 @@ uint8_t * amodn(uint8_t * a, uint8_t * n, uint8_t size) {
             clear(temp, size);
             aaddb(q_mid , temp, q_hi, size);  
         } 
-        if (iter++ == 32) {
-            break;
-        }
     }
 
     printf("a: ");
@@ -166,12 +162,6 @@ uint8_t * amodn(uint8_t * a, uint8_t * n, uint8_t size) {
     printf("\n");
     uint8_t * dest = new(size);
     asubb(a, prod, dest, size);
-
-    // free(prod);
-    // free(temp);
-    // free(q_lo);
-    // free(q_hi);
-    // free(q_mid);
 
     return dest;
 }
