@@ -31,6 +31,7 @@ void set(byte *dest, byte constant, byte size) {
 }
 
 void copy(byte *src, byte *dest, byte size) {
+	clear(dest, size);
 	for (int i = 0; i < (1 << size); i++) {
 		dest[i] = src[i];
 	}
@@ -78,17 +79,6 @@ int compare(byte *src1, byte *src2, byte size) {
 	return 0;
 }
 
-// src1 -= src2, undefined behavior is src1 < src2
-void sub(byte *src1, byte *src2, byte *dest, byte size) {
-	byte carry = 1;
-	for (int i = 0; i < (1 << size); i++) {
-		byte t = src1[i] + ~src2[i] + carry;
-		carry = (t < src1[i]) ? 1 : 0;
-		dest[i] = t;
-	}
-	return;
-}
-
 // src1 += src2, overflows back to 0
 void add(byte *src1, byte *src2, byte *dest, byte size) {
 	byte carry = 0;
@@ -107,6 +97,25 @@ void add_const(byte *src, byte value, byte *dest, byte size) {
 		value = (t < src[i]) ? 1 : 0;
 		dest[i] = t;
 	}
+}
+
+// src1 -= src2, undefined behavior is src1 < src2
+void sub(byte *src1, byte *src2, byte *dest, byte size) {
+	// byte temp[1 << size];
+	// for (int i = 0; i < (1 << size); i++) {
+	// 	temp[i] = ~src2[i];
+	// }
+	// add_const(temp, 1, temp, size);
+	printf("in sub:\n");
+	int carry = 1;
+	for (int i = 0; i < (1 << size); i++) {
+		int t = (int)src1[i] + (int)(~src2[i]) + carry;
+		carry = (t >> 8) & 1;
+		printf("digit: %x, carry: %d ", t, carry);
+		dest[i] = t;
+	}
+	printf("\n");
+	return;
 }
 
 // size = log_2(length of src1, src2)
@@ -197,10 +206,25 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 	byte zero[(1 << size)];
 	clear(zero, size);
 
+	printf("prod: ");
+	print(prod, size + 1);
+	printf("\n");
+
 	if (compare(q_mid, zero, size) == 0) {
 		copy(a, dest, size);
 	} else {
-		sub(a, prod, dest, size);
+		printf("prod: ");
+		print(prod, size + 1);
+		printf("\n");
+		printf("a: ");
+		print(a, size + 1);
+		printf("\n");
+		byte temp2[1 << (size + 1)];
+		printf("a compare to prod: %d \n", compare(a, prod, size + 1));
+		sub(a, prod, temp2, size + 1);
+		printf("temp: ");
+		print(temp2, size + 1);
+		printf("\n");
 	}
 }
 
@@ -213,7 +237,7 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
 	print(d, size);
 	printf(" mod ");
 	print(n, size);
-	printf("\n");
+	printf(": \n");
 
 	byte cur_a[1 << size];
 	byte prod[1 << size];
@@ -226,23 +250,33 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
 	for (int i = 0; i < 1 << (size); i++) {
 		for (int j = 0; j < 8; j++) {
 
-			// printf("cur a: ");
-			// print(cur_a, size);
-			// printf(", exp: %d value: %d, new cur_a: ", (i * 8 + j),
-			//	   (d[i] >> j) & 1);
+			printf("cur a: ");
+			print(cur_a, size);
+			printf("\nexp: %d value: %d\n", (i * 8 + j), (d[i] >> j) & 1);
 
+			// if exponent set, prod = (prod * cur_a) % n
 			if ((d[i] >> j) & 1 == 1) {
+				clear(temp, size);
 				mult(cur_a, prod, temp, size);
 				mod(temp, n, prod, size);
+				printf("\tcur_prod: ");
+				print(prod, size);
+				printf("\n");
 			}
+			// regardless of whether exponent set:
+			// cur_a = (cur_a * cur_a) % n
+			printf(" here ");
+			clear(temp, size);
 			mult(cur_a, cur_a, temp, size);
 			// print(temp, size + 1);
 			// printf(" new cur a mod n: ");
 			mod(temp, n, cur_a, size);
-			// print(cur_a, size);
+			printf("new cur_a: ");
+
+			print(cur_a, size);
 			// printf(" new prod: ");
 			// print(prod, size);
-			// printf("\n");
+			printf("\n");
 		}
 	}
 
@@ -308,85 +342,104 @@ int miller_rabin(byte *p, byte size) {
 }
 
 int main(int argc, char *argv[]) {
-	byte a[4] = {0xcd, 0xab, 0x89, 0x67};
-	byte b[4] = {0x78, 0x56, 0x34, 0x12};
 
-	byte *prod = calloc(8, sizeof(byte));
-	mult(&a[0], &b[0], prod, 2);
-
-	for (int i = 7; i >= 0; i--) {
-		printf("%02x", prod[i]);
-	}
+	byte x63d[2] = {0x3d, 0x06};
+	byte x000c7a01[4] = {0x01, 0x7a, 0x0c, 0x00};
+	byte x0001[2] = {0x00, 0x00};
+	mod(x000c7a01, x63d, x0001, 1);
+	print(x0001, 1);
 	printf("\n");
 
-	printf("%d, %d\n", compare(a, b, 2), compare(b, a, 2));
+	// calculating 000c7a01 mod 063d -> this is messing up
 
-	byte *aa = calloc(4, 1);
-	add(a, b, aa, 2);
-	for (int i = 3; i >= 0; i--) {
-		printf("%02x", aa[i]);
-	}
-	printf("\n");
+	// byte ft[2] = {0x2b, 0x00};
+	// byte pow[2] = {0x8f, 0x01};
+	// byte n[2] = {0x3d, 0x06};
+	// byte dest[2] = {0x00, 0x00};
+	// admodn(ft, pow, n, dest, 1);
 
-	sub(aa, b, aa, 2);
-	for (int i = 3; i >= 0; i--) {
-		printf("%02x", aa[i]);
-	}
-	printf("\n");
+	// print(dest, 1);
+	// printf("\n");
 
-	sub(aa, b, aa, 2);
-	for (int i = 3; i >= 0; i--) {
-		printf("%02x", aa[i]);
-	}
-	printf("\n");
+	// byte a[4] = {0xcd, 0xab, 0x89, 0x67};
+	// byte b[4] = {0x78, 0x56, 0x34, 0x12};
 
-	sub(aa, b, aa, 2);
-	for (int i = 3; i >= 0; i--) {
-		printf("%02x", aa[i]);
-	}
-	printf("\n");
+	// byte *prod = calloc(8, sizeof(byte));
+	// mult(&a[0], &b[0], prod, 2);
 
-	rshift(aa, 3, 2);
-	for (int i = 3; i >= 0; i--) {
-		printf("%02x", aa[i]);
-	}
-	printf("\n"); // 00466926970ec559
+	// for (int i = 7; i >= 0; i--) {
+	// 	printf("%02x", prod[i]);
+	// }
+	// printf("\n");
 
-	mult(aa, aa, prod, 2);
-	for (int i = 7; i >= 0; i--) {
-		printf("%02x", prod[i]);
-	}
-	printf("\n"); // so far so good:
-	// 00466926970ec559
+	// printf("%d, %d\n", compare(a, b, 2), compare(b, a, 2));
 
-	byte *modulo = new (2);
-	mod(prod, b, modulo, 2);
-	for (int i = 3; i >= 0; i--) {
-		printf("%02x", modulo[i]);
-	}
-	printf("\n");
-	// should be: 0e962fc9
+	// byte *aa = calloc(4, 1);
+	// add(a, b, aa, 2);
+	// for (int i = 3; i >= 0; i--) {
+	// 	printf("%02x", aa[i]);
+	// }
+	// printf("\n");
 
-	free(prod);
-	free(aa);
-	free(modulo);
+	// sub(aa, b, aa, 2);
+	// for (int i = 3; i >= 0; i--) {
+	// 	printf("%02x", aa[i]);
+	// }
+	// printf("\n");
 
-	byte base[2] = {0x00, 0x00};
-	byte n[2] = {0x23, 0x02};
-	byte exp[2] = {0x22, 0x02};
-	byte dest[2] = {0x00, 0x00};
+	// sub(aa, b, aa, 2);
+	// for (int i = 3; i >= 0; i--) {
+	// 	printf("%02x", aa[i]);
+	// }
+	// printf("\n");
 
-	for (int i = 0; i < 53; i++) {
-		set(base, primes[i], 1);
-		admodn(base, exp, n, dest, 1);
-		print(dest, 1);
-		printf("\n");
-	}
+	// sub(aa, b, aa, 2);
+	// for (int i = 3; i >= 0; i--) {
+	// 	printf("%02x", aa[i]);
+	// }
+	// printf("\n");
 
-	printf("%d, %d\n", find_lsb_set(0xf0), find_lsb_set(0x80));
+	// rshift(aa, 3, 2);
+	// for (int i = 3; i >= 0; i--) {
+	// 	printf("%02x", aa[i]);
+	// }
+	// printf("\n"); // 00466926970ec559
 
-	byte test[2] = {0x3d, 0x06};
-	printf("answer: %d\n", miller_rabin(test, 1));
+	// mult(aa, aa, prod, 2);
+	// for (int i = 7; i >= 0; i--) {
+	// 	printf("%02x", prod[i]);
+	// }
+	// printf("\n"); // so far so good:
+	// // 00466926970ec559
 
-	return 0;
+	// byte *modulo = new (2);
+	// mod(prod, b, modulo, 2);
+	// for (int i = 3; i >= 0; i--) {
+	// 	printf("%02x", modulo[i]);
+	// }
+	// printf("\n");
+	// // should be: 0e962fc9
+
+	// free(prod);
+	// free(aa);
+	// free(modulo);
+
+	// byte base[2] = {0x00, 0x00};
+	// byte n[2] = {0x23, 0x02};
+	// byte exp[2] = {0x22, 0x02};
+	// byte dest[2] = {0x00, 0x00};
+
+	// for (int i = 0; i < 53; i++) {
+	// 	set(base, primes[i], 1);
+	// 	admodn(base, exp, n, dest, 1);
+	// 	print(dest, 1);
+	// 	printf("\n");
+	// }
+
+	// printf("%d, %d\n", find_lsb_set(0xf0), find_lsb_set(0x80));
+
+	// byte test[2] = {0x3d, 0x06};
+	// printf("answer: %d\n", miller_rabin(test, 1));
+
+	// return 0;
 }
