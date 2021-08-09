@@ -6,6 +6,12 @@ typedef unsigned char byte;
 
 byte *new (byte size) { return calloc((1 << size), sizeof(byte)); }
 
+byte primes[53] = {2,	3,	 5,	  7,   11,	13,	 17,  23,  29,	31,	 37,
+				   41,	43,	 47,  53,  59,	61,	 67,  71,  73,	79,	 83,
+				   89,	97,	 101, 103, 107, 109, 113, 127, 131, 137, 139,
+				   149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197,
+				   199, 211, 223, 227, 229, 233, 239, 241, 251};
+
 void clear(byte *src, byte size) {
 	for (int i = 0; i < (1 << size); i++) {
 		src[i] = 0;
@@ -18,7 +24,8 @@ void print(byte *src, byte size) {
 	}
 }
 
-void fill(byte *dest, byte constant, byte size) {
+// set the first byte in dest to constant, clear the rest
+void set(byte *dest, byte constant, byte size) {
 	clear(dest, size);
 	dest[0] = constant;
 }
@@ -29,12 +36,34 @@ void copy(byte *src, byte *dest, byte size) {
 	}
 }
 
-// shift < 8
+void rand_int(byte *dest, byte size) {
+	for (int i = 0; i < (1 << size); i++) {
+		dest[i] = rand() & 0xff;
+	}
+	dest[0] |= 1;
+	dest[(1 << size) - 1] |= 0x80;
+
+	if (dest[0] == 1) {
+		// set another random bit in the least significant byte
+		// because right shift only works for shift < 8;
+		dest[0] |= (1 << ((rand() % 7) + 1));
+	}
+}
+
+// shift must be less than 8
 void rshift(byte *src, byte shift, byte size) {
 	for (int i = 0; i < (1 << size) - 1; i++) {
 		src[i] = src[i] >> shift | src[i + 1] << (8 - shift);
 	}
 	src[(1 << size) - 1] >>= shift;
+}
+
+byte find_lsb_set(byte src) {
+	for (byte i = 0; i < 8; i++) {
+		if ((src >> i) & 1 == 1) {
+			return i;
+		}
+	}
 }
 
 // return -1 if src1 < src2, 1 if src1 > src2, else 0
@@ -156,9 +185,9 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 		printf(" \n");
 
 		if (compare(prod, a, size + 1) < 0) {
-			add_const(q_mid, 0, q_lo, size);
+			copy(q_mid, q_lo, size);
 		} else {
-			add_const(q_mid, 0, q_hi, size);
+			copy(q_mid, q_hi, size);
 		}
 	} while (compare(prev, q_mid, size) != 0);
 
@@ -176,12 +205,21 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 }
 
 // compute a^d mod n and store in dest
+// a, d, and n are all 2^size bytes wide
 void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
+	printf("\t\tcalculating ");
+	print(a, size);
+	printf(" ^ ");
+	print(d, size);
+	printf(" mod ");
+	print(n, size);
+	printf("\n");
+
 	byte cur_a[1 << size];
 	byte prod[1 << size];
 	byte temp[1 << (size + 1)];
 
-	fill(prod, 1, size);
+	set(prod, 1, size);
 
 	copy(a, cur_a, size); // current = a
 
@@ -209,6 +247,64 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
 	}
 
 	copy(prod, dest, size);
+}
+
+// p is the int we are testing for primality
+int miller_rabin(byte *p, byte size) {
+	// generate a prime
+	byte pm1[1 << size];
+	byte one[1 << size];
+	byte d[1 << size];
+	copy(p, d, size);
+
+	set(one, 1, size);
+	sub(p, one, pm1, size);
+	byte shift = find_lsb_set(pm1[0]);
+	rshift(d, shift, size);
+
+	byte two[1 << size];
+	set(two, 2, size);
+
+	for (int k = 0; k < 53; k++) {
+		printf("checking witness: %d\n", primes[k]);
+
+		byte a[1 << size];
+		byte dest[1 << size];
+		set(a, primes[k], size);
+		admodn(a, d, p, dest, size);
+		copy(dest, a, size);
+
+		printf("\t");
+		print(a, size);
+		printf("\n");
+
+		if (compare(a, one, size) == 0 || compare(a, pm1, size) == 0) {
+			printf("\tfirst iteration passed\n");
+			continue;
+		}
+
+		int is_witness = 0;
+		for (int s = 0; s < shift; s++) {
+			admodn(a, two, p, dest, size);
+			copy(dest, a, size);
+
+			printf("\t");
+			print(a, size);
+			printf("\n");
+
+			if (compare(a, pm1, size) == 0) {
+				is_witness = 1;
+				break;
+			}
+		}
+		if (is_witness == 1) {
+			continue;
+		} else {
+			return 0;
+		}
+	}
+
+	return 1;
 }
 
 int main(int argc, char *argv[]) {
@@ -275,15 +371,22 @@ int main(int argc, char *argv[]) {
 	free(aa);
 	free(modulo);
 
-	byte base[2] = {0x17, 0x00};
+	byte base[2] = {0x00, 0x00};
 	byte n[2] = {0x23, 0x02};
 	byte exp[2] = {0x22, 0x02};
 	byte dest[2] = {0x00, 0x00};
 
-	admodn(base, exp, n, dest, 1);
+	for (int i = 0; i < 53; i++) {
+		set(base, primes[i], 1);
+		admodn(base, exp, n, dest, 1);
+		print(dest, 1);
+		printf("\n");
+	}
 
-	print(dest, 1);
-	printf("\n");
+	printf("%d, %d\n", find_lsb_set(0xf0), find_lsb_set(0x80));
+
+	byte test[2] = {0x3d, 0x06};
+	printf("answer: %d\n", miller_rabin(test, 1));
 
 	return 0;
 }
