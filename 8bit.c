@@ -110,59 +110,57 @@ void mult(byte *src1, byte *src2, byte *dest, byte size) {
 // size = log_2(size of n)
 // algorithm: binary search for q
 void mod(byte *a, byte *n, byte *dest, byte size) {
-	// printf("\ncalculating ");
-	// print(a, size + 1);
-	// printf(" mod ");
-	// print(n, size);
-	// printf("\n");
+	printf("\ncalculating ");
+	print(a, size + 1);
+	printf(" mod ");
+	print(n, size);
+	printf("\n");
 
 	clear(dest, size);
 
 	byte q_hi[1 << size];
 	byte q_lo[1 << size];
 	byte q_mid[1 << size];
+	byte prev[1 << size];
 	byte prod[1 << (size + 1)];
 
 	clear(q_hi, size);
 	clear(q_lo, size);
 	clear(q_mid, size);
+	clear(prev, size);
 	clear(prod, size + 1);
 
 	for (int i = 0; i < (1 << size); i++) {
 		q_hi[i] = 0xff;
 	}
 
-	int iter = 0;
+	do {
+		copy(q_mid, prev, size);
 
-	while (compare(q_lo, q_hi, size) != 0) {
 		add(q_hi, q_lo, q_mid, size);
 		rshift(q_mid, 1, size);
 		mult(q_mid, n, prod, size);
 
-		// printf("lo: ");
-		// print(q_lo, size);
-		// printf(" high: ");
-		// print(q_hi, size);
-		// printf(" mid: ");
-		// print(q_mid, size);
-		// printf(" prod: ");
-		// print(prod, size + 1);
-		// printf(" n: ");
-		// print(n, size);
-		// printf(" a: ");
-		// print(a, size + 1);
-		// printf(" \n");
+		printf("lo: ");
+		print(q_lo, size);
+		printf(" high: ");
+		print(q_hi, size);
+		printf(" mid: ");
+		print(q_mid, size);
+		printf(" prod: ");
+		print(prod, size + 1);
+		printf(" n: ");
+		print(n, size);
+		printf(" a: ");
+		print(a, size + 1);
+		printf(" \n");
 
 		if (compare(prod, a, size + 1) < 0) {
 			add_const(q_mid, 0, q_lo, size);
 		} else {
 			add_const(q_mid, 0, q_hi, size);
 		}
-
-		if (iter++ == 16) {
-			break;
-		}
-	}
+	} while (compare(prev, q_mid, size) != 0);
 
 	// sub(a, prod, dest, size);
 
