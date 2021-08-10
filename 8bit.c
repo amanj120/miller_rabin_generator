@@ -82,9 +82,10 @@ int compare(byte *src1, byte *src2, byte size) {
 }
 
 // src1 += src2, overflows back to 0
-void add(byte *src1, byte *src2, byte *dest, byte size) {
+// returns carry
+byte add(byte *src1, byte *src2, byte *dest, byte size) {
 	byte carry = 0;
-	clear(dest, size);
+	// clear(dest, size);
 	for (int i = 0; i < (1 << size); i++) {
 		byte t = src1[i] + src2[i] + carry;
 		if (carry == 1) {
@@ -94,10 +95,11 @@ void add(byte *src1, byte *src2, byte *dest, byte size) {
 		}
 		dest[i] = t;
 	}
+	return carry;
 }
 
 void add_const(byte *src, byte value, byte *dest, byte size) {
-	clear(dest, size);
+	// clear(dest, size);
 	for (int i = 0; i < (1 << size); i++) {
 		byte t = src[i] + value;
 		value = (t < src[i]) ? 1 : 0;
@@ -135,9 +137,6 @@ void sub(byte *src1, byte *src2, byte *dest, byte size) {
 // size of dest must be twice that of src1 and src2
 // src1 and src2 must be the same size
 void mult(byte *src1, byte *src2, byte *dest, byte size) {
-	// if (DEBUG) {
-	// 	printf("in mult\n");
-	// }
 	clear(dest, size + 1);
 	int idx;
 	byte carry, temp;
@@ -161,19 +160,28 @@ void mult(byte *src1, byte *src2, byte *dest, byte size) {
 }
 
 void avg(byte *src1, byte *src2, byte *dest, byte size) {
-	byte src1big[1 << (size + 1)];
-	byte src2big[1 << (size + 1)];
-	byte average[1 << (size + 1)];
-	clear(src1big, size + 1);
-	clear(src2big, size + 1);
-	clear(average, size + 1);
+	byte carry = add(src1, src2, dest, size);
+	rshift(dest, 1, size);
+	if (carry) {
+		dest[(1 << size) - 1] |= 0x8f;
+	}
+	// callgrind 52731
+	// byte src1big[1 << (size + 1)];
+	// byte src2big[1 << (size + 1)];
+	// byte average[1 << (size + 1)];
+	// // callgrind 52537
+	// // clear(src1big, size + 1);
+	// // clear(src2big, size + 1);
+	// // clear(average, size + 1);
+	// src1big[(1 << size)] = 0;
+	// src2big[(1 << size)] = 0;
 
-	copy(src1, src1big, size);
-	copy(src2, src2big, size);
-	add(src1big, src2big, average, size + 1);
-	rshift(average, 1, size + 1);
+	// copy(src1, src1big, size);
+	// copy(src2, src2big, size);
+	// add(src1big, src2big, average, size + 1);
+	// rshift(average, 1, size + 1);
 
-	copy(average, dest, size);
+	// copy(average, dest, size);
 }
 
 // a = qn + r. Assume a < n^2 (because every multiplication we mod n)
@@ -187,6 +195,7 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 		print(n, size);
 		printf("\n");
 	}
+
 	byte prev[1 << size];
 	byte zero[(1 << size)];
 	byte q_hi[1 << size];
@@ -293,6 +302,17 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
 		}
 	}
 	copy(prod, dest, size);
+
+	if (DEBUG) {
+		print(a, size);
+		printf(" ^ ");
+		print(d, size);
+		printf(" mod ");
+		print(n, size);
+		printf(" = ");
+		print(dest, size);
+		printf("\n");
+	}
 }
 
 // p is the int we are testing for primality
@@ -343,33 +363,36 @@ int miller_rabin(byte *p, byte size) {
 	return 1;
 }
 
-// exhaustive test of the system for all numbers [256, 65535]
+// exhaustive test of the system
 void test() {
-	for (int n = 257; n < 65536; n += 2) {
+	// about 1 million values
+	for (long n = 0x30001; n < 0x30401; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
-			printf("skipping %d \n", n);
+			printf("skipping %ld \n", n);
 			continue;
 		}
 
 		int is_prime = 1;
-		for (int p = 0; p < 54; p++) {
-			if (n % primes[p] == 0) {
+		for (int d = 3; d * d <= n; d += 2) {
+			if (n % d == 0) {
 				is_prime = 0;
 				break;
 			}
 		}
-		byte test[2] = {(n & 0xff), ((n >> 8) & 0xff)};
-
-		int idx = is_prime + miller_rabin(test, 1);
+		byte test[4] = {(n & 0xff), ((n >> 8) & 0xff), ((n >> 16) & 0xff),
+						((n >> 24) & 0xff)};
+		// print(test, 2);
+		// printf(" ");
+		int idx = is_prime + miller_rabin(test, 2);
 
 		if (idx == 0) {
-			printf("%d is composite\n", n);
+			// printf("%ld is composite\r", n);
 		} else if (idx == 1) {
-			printf("%d: prime: %d miller rabin: %d\n", n, is_prime,
+			printf("%ld: prime: %d miller rabin: %d\n", n, is_prime,
 				   idx - is_prime);
 			break;
 		} else {
-			printf("%d is prime\n", n);
+			// printf("%ld is prime    \r", n);
 		}
 	}
 }
@@ -406,9 +429,9 @@ int main(int argc, char *argv[]) {
 	// print(dest, 1);
 	// printf("\n");
 
-	// byte p[2] = {0x85, 0xff};
-	// int x = miller_rabin(p, 1);
-	// printf("miller rabin 0x8015: %d\n", x);
+	// byte p[4] = {0x03, 0x00, 0x01, 0x00};
+	// int x = miller_rabin(p, 2);
+	// printf("miller rabin 0x10003: %d\n", x);
 
 	test();
 }
