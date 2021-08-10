@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 // 8 bit so it works on AVR
-#define DEBUG 1
+#define DEBUG 0
 
 typedef uint8_t byte;
 
@@ -87,7 +87,11 @@ void add(byte *src1, byte *src2, byte *dest, byte size) {
 	clear(dest, size);
 	for (int i = 0; i < (1 << size); i++) {
 		byte t = src1[i] + src2[i] + carry;
-		carry = (t < src1[i]) ? 1 : 0;
+		if (carry == 1) {
+			carry = (t <= src1[i]) ? 1 : 0;
+		} else {
+			carry = (t < src1[i]) ? 1 : 0;
+		}
 		dest[i] = t;
 	}
 }
@@ -156,12 +160,32 @@ void mult(byte *src1, byte *src2, byte *dest, byte size) {
 	return;
 }
 
+void avg(byte *src1, byte *src2, byte *dest, byte size) {
+	byte src1big[1 << (size + 1)];
+	byte src2big[1 << (size + 1)];
+	byte average[1 << (size + 1)];
+	clear(src1big, size + 1);
+	clear(src2big, size + 1);
+	clear(average, size + 1);
+
+	copy(src1, src1big, size);
+	copy(src2, src2big, size);
+	add(src1big, src2big, average, size + 1);
+	rshift(average, 1, size + 1);
+
+	copy(average, dest, size);
+}
+
 // a = qn + r. Assume a < n^2 (because every multiplication we mod n)
 // size = log_2(size of n)
 // algorithm: binary search for q
 void mod(byte *a, byte *n, byte *dest, byte size) {
 	if (DEBUG) {
-		printf("in mod\n");
+		printf("calculating ");
+		print(a, size + 1);
+		printf(" mod ");
+		print(n, size);
+		printf("\n");
 	}
 	byte prev[1 << size];
 	byte zero[(1 << size)];
@@ -184,8 +208,7 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 	do {
 		copy(q_mid, prev, size);
 
-		add(q_hi, q_lo, q_mid, size);
-		rshift(q_mid, 1, size);
+		avg(q_hi, q_lo, q_mid, size);
 		mult(q_mid, n, prod, size);
 
 		if (DEBUG) {
@@ -242,12 +265,21 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
 	byte prod[1 << size];
 	byte temp[1 << (size + 1)];
 
+	clear(cur_a, size);
+	clear(prod, size);
+	clear(temp, size + 1);
+
 	set(prod, 1, size);
 
 	copy(a, cur_a, size); // current = a
 
 	for (int i = 0; i < 1 << (size); i++) {
 		for (int j = 0; j < 8; j++) {
+			if (DEBUG) {
+				printf("on %d bit, it is%sset\n", i * 8 + j,
+					   (((d[i] >> j) & 1 == 1) ? " " : " not "));
+			}
+
 			// if exponent set, prod = (prod * cur_a) % n
 			if ((d[i] >> j) & 1 == 1) {
 				clear(temp, size);
@@ -314,6 +346,11 @@ int miller_rabin(byte *p, byte size) {
 // exhaustive test of the system for all numbers [256, 65535]
 void test() {
 	for (int n = 257; n < 65536; n += 2) {
+		if ((n & 0xff) == 0x1) { // we can't handle these cases
+			printf("skipping %d \n", n);
+			continue;
+		}
+
 		int is_prime = 1;
 		for (int p = 0; p < 54; p++) {
 			if (n % primes[p] == 0) {
@@ -328,7 +365,8 @@ void test() {
 		if (idx == 0) {
 			printf("%d is composite\n", n);
 		} else if (idx == 1) {
-			printf("prime: %d miller rabin: %d\n", is_prime, idx - is_prime);
+			printf("%d: prime: %d miller rabin: %d\n", n, is_prime,
+				   idx - is_prime);
 			break;
 		} else {
 			printf("%d is prime\n", n);
@@ -337,8 +375,40 @@ void test() {
 }
 
 int main(int argc, char *argv[]) {
-	byte p[2] = {0x15, 0x80};
-	int x = miller_rabin(p, 1);
-	printf("miller rabin 0x8015: %d\n", x);
-	// test();
+	// byte s1[4] = {0,0,0,0};
+	// byte s2[4] = {0,1,0,0};
+	// byte dest[4] = {0,0,0,0};
+	// add(s1, s2, dest, 2);
+
+	// failing on (0000 + 0100) >> 1 = 0080
+	// byte n1[2] = {0x00, 0x00};
+	// byte n2[2] = {0x00, 0x01};
+	// byte dest[2] = {0x00, 0x00};
+	// printf("average: ");
+	// avg(n1, n2, dest, 1);
+	// print(dest, 1);
+	// printf("\n");
+
+	// failing on calculating 40140190 mod 8015
+	// byte a[4] = {0x90, 0x01, 0x14, 0x40};
+	// byte n[2] = {0x15, 0x80};
+	// byte dest[2] = {0x00, 0x00};
+	// mod(a, n, dest, 1);
+	// print(dest, 1);
+	// printf("\n");
+
+	// 17c7 ^ 0002 mod 8015
+	// byte a[2] = {0xc7, 0x17};
+	// byte d[2] = {0x02, 0x00};
+	// byte n[2] = {0x15, 0x80};
+	// byte dest[2] = {0x00, 0x00};
+	// admodn(a, d, n, dest, 1);
+	// print(dest, 1);
+	// printf("\n");
+
+	// byte p[2] = {0x85, 0xff};
+	// int x = miller_rabin(p, 1);
+	// printf("miller rabin 0x8015: %d\n", x);
+
+	test();
 }
