@@ -6,8 +6,6 @@
 
 typedef unsigned char byte;
 
-byte *new (byte size) { return calloc((1 << size), sizeof(byte)); }
-
 byte primes[54] = {2,	3,	 5,	  7,   11,	13,	 17,  19,  23,	29,	 31,
 				   37,	41,	 43,  47,  53,	59,	 61,  67,  71,	73,	 79,
 				   83,	89,	 97,  101, 103, 107, 109, 113, 127, 131, 137,
@@ -106,6 +104,26 @@ void add_const(byte *src, byte value, byte *dest, byte size) {
 	}
 }
 
+void avg(byte *src1, byte *src2, byte *dest, byte size) {
+	byte carry = add(src1, src2, dest, size);
+	rshift(dest, 1, size);
+	if (carry) {
+		dest[(1 << size) - 1] |= 0x8f; // set the msb
+	}
+}
+
+byte is_const(byte * src, byte constant, byte size) {
+	if (src[0] != constant) {
+		return 0;
+	} 
+	for (int i = 1; i < (1 << size); i++) {
+		if (src[i] != 0) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
 // src1 -= src2, undefined behavior is src1 < src2
 void sub(byte *src1, byte *src2, byte *dest, byte size) {
 	// printf("in sub\n");
@@ -158,34 +176,10 @@ void mult(byte *src1, byte *src2, byte *dest, byte size) {
 	return;
 }
 
-void avg(byte *src1, byte *src2, byte *dest, byte size) {
-	byte carry = add(src1, src2, dest, size);
-	rshift(dest, 1, size);
-	if (carry) {
-		dest[(1 << size) - 1] |= 0x8f; // set the msb
-	}
-	// callgrind 52731
-	// byte src1big[1 << (size + 1)];
-	// byte src2big[1 << (size + 1)];
-	// byte average[1 << (size + 1)];
-	// // callgrind 52537
-	// // clear(src1big, size + 1);
-	// // clear(src2big, size + 1);
-	// // clear(average, size + 1);
-	// src1big[(1 << size)] = 0;
-	// src2big[(1 << size)] = 0;
-
-	// copy(src1, src1big, size);
-	// copy(src2, src2big, size);
-	// add(src1big, src2big, average, size + 1);
-	// rshift(average, 1, size + 1);
-
-	// copy(average, dest, size);
-}
-
 // a = qn + r. Assume a < n^2 (because every multiplication we mod n)
 // size = log_2(size of n)
 // algorithm: binary search for q
+// stack usage: ~ 6 times size
 void mod(byte *a, byte *n, byte *dest, byte size) {
 	if (DEBUG) {
 		printf("calculating ");
@@ -196,15 +190,13 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 	}
 
 	byte prev[1 << size];
-	byte zero[(1 << size)];
 	byte q_hi[1 << size];
 	byte q_lo[1 << size];
 	byte q_mid[1 << size];
 	byte prod[1 << (size + 1)];
 
 	// changes below are 59338
-	// clear(prev, size); // we set this in copy
-	clear(zero, size);
+	clear(prev, size); // we set this in copy
 	// clear(q_hi, size); // we set this below
 	clear(q_lo, size);
 	// clear(q_mid, size); // gets set in avg
@@ -243,12 +235,13 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 		}
 	} while (compare(prev, q_mid, size) != 0);
 
-	if (compare(q_mid, zero, size) == 0) {
+	if (is_const(q_mid, 0, size) == 1) {
 		copy(a, dest, size);
 	} else {
-		byte temp[(1 << (size + 1))];
-		sub(a, prod, temp, size + 1);
-		copy(temp, dest, size);
+		// byte temp[(1 << (size + 1))];
+		// sub(a, prod, temp, size + 1);
+		// copy(temp, dest, size);
+		sub(a, prod, dest, size);
 	}
 
 	if (DEBUG) {
@@ -366,7 +359,7 @@ int miller_rabin(byte *p, byte size) {
 // exhaustive test of the system
 void test() {
 	// about 1 million values
-	for (long n = 0x30001; n < 0x30401; n += 2) {
+	for (long n = 0x101; n < 0x40001; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
 			printf("skipping %ld \n", n);
 			continue;

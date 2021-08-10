@@ -12,8 +12,9 @@
 8bit.c:110:6:sub	16	static
 8bit.c:138:6:mult	80	static
 8bit.c:161:6:avg	64	static
-8bit.c:189:6:mod	400	dynamic
-8bit.c:263:6:admodn	224	dynamic
-8bit.c:319:5:miller_rabin	352	dynamic
-8bit.c:367:6:test	64	static
-8bit.c:401:5:main	32	static
+8bit.c:169:6:is_const	16	static
+8bit.c:185:6:mod	240	dynamic
+8bit.c:258:6:admodn	224	dynamic
+8bit.c:314:5:miller_rabin	352	dynamic
+8bit.c:362:6:test	64	static
+8bit.c:396:5:main	32	static
