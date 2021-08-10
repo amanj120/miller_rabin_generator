@@ -1,11 +1,10 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 // 8 bit so it works on AVR
 #define DEBUG 0
 
-typedef uint8_t byte;
+typedef unsigned char byte;
 
 byte *new (byte size) { return calloc((1 << size), sizeof(byte)); }
 
@@ -163,7 +162,7 @@ void avg(byte *src1, byte *src2, byte *dest, byte size) {
 	byte carry = add(src1, src2, dest, size);
 	rshift(dest, 1, size);
 	if (carry) {
-		dest[(1 << size) - 1] |= 0x8f;
+		dest[(1 << size) - 1] |= 0x8f; // set the msb
 	}
 	// callgrind 52731
 	// byte src1big[1 << (size + 1)];
@@ -203,11 +202,12 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 	byte q_mid[1 << size];
 	byte prod[1 << (size + 1)];
 
-	clear(prev, size);
+	// changes below are 59338
+	// clear(prev, size); // we set this in copy
 	clear(zero, size);
-	clear(q_hi, size);
+	// clear(q_hi, size); // we set this below
 	clear(q_lo, size);
-	clear(q_mid, size);
+	// clear(q_mid, size); // gets set in avg
 	clear(prod, size + 1);
 
 	for (int i = 0; i < (1 << size); i++) {
@@ -397,6 +397,7 @@ void test() {
 	}
 }
 
+// stack usage -> about 20x the size of the prime, need to cut down
 int main(int argc, char *argv[]) {
 	// byte s1[4] = {0,0,0,0};
 	// byte s2[4] = {0,1,0,0};
