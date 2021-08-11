@@ -127,25 +127,23 @@ byte is_const(byte * src, byte constant, byte size) {
 //dest = src1 - src2, undefined behavior is src1 < src2
 void sub(byte *src1, byte *src2, byte *dest, byte size) {
 	// printf("in sub\n");
+	byte t = 0;
 	for (int i = 0; i < (1 << size); i++) {
 		if (src2[i] > src1[i]) {
 			// No out of bounds errors bc src1 > src2
-			if (src1[i + 1] != 0) {
-				src1[i + 1] -= 1;
-			} else {
-				for (int j = i + 1; j < (1 << size); j++) {
-					if (src1[j] == 0) {
-						src1[j] = 255;
-					} else {
-						src1[j] -= 1;
-						break;
-					}
+			for (int j = i + 1; j < (1 << size); j++) {
+				if (src1[j] == 0) {
+					src1[j] = 255;
+				} else {
+					src1[j] -= 1;
+					break;
 				}
 			}
-			dest[i] = 256 - (src2[i] - src1[i]);
+			t = (255 - (src2[i] - src1[i])) + 1;
 		} else {
-			dest[i] = src1[i] - src2[i];
+			t = src1[i] - src2[i];
 		}
+		dest[i] = t;
 	}
 	return;
 }
@@ -176,7 +174,7 @@ void mult(byte *src1, byte *src2, byte *dest, byte size) {
 	return;
 }
 
-void mod3(byte * a, byte *n, byte * dest, byte size) {
+void mod(byte * a, byte *n, byte * dest, byte size) {
 	if (DEBUG) {
 		printf("calculating ");
 		print(a, size + 1);
@@ -185,9 +183,9 @@ void mod3(byte * a, byte *n, byte * dest, byte size) {
 		printf("\n");
 	}
 
-	byte temp[1 << (size + 1)];
+	// byte temp[1 << (size + 1)];
 	byte minus[1 << (size + 1)];
-	clear(temp, size + 1);
+	// clear(temp, size + 1);
 	clear(minus, size + 1);
 	copy(n, &minus[(1 << size)], size); // shift n (1 << size);
 
@@ -203,135 +201,13 @@ void mod3(byte * a, byte *n, byte * dest, byte size) {
 
 		if (compare(minus, a, size + 1) < 0) {
 			// if minus  < a:
-			sub(a, minus, temp, size + 1); // temp = a - (minus * n)
-			copy(temp, a, size + 1);
+			sub(a, minus, a, size + 1); // temp = a - (minus * n)
+			// copy(temp, a, size + 1);
 		}
 		rshift(minus, 1, size + 1);
 	}
 	copy(a, dest, size);
 
-}
-
-// size is the size of n
-void mod2(byte * a, byte * n, byte * dest, byte size) {
-	if (DEBUG) {
-		printf("calculating ");
-		print(a, size + 1);
-		printf(" mod ");
-		print(n, size);
-		printf("\n");
-	}
-
-	byte minus[1 << size];
-	byte prod[1 << (size + 1)];
-	byte temp[1 << (size + 1)];
-	
-	clear(prod, size + 1);
-	clear(minus, size);
-	minus[(1 << size) - 1] = 0x80; // set the leftmost bit
-	// for (int i = 0; i < (1 << size); i++) {
-	// 	minus[i] = 0xff;
-	// }
-
-	for (int i = 0; i < (1 << (size + 3)); i++) {
-		mult(n, minus, prod, size);
-
-		if (DEBUG) {
-			printf("minus: ");
-			print(minus, size);
-			printf(" n * minus = ");
-			print(prod, size + 1);
-			printf(" remainder = ");
-			print(a, size + 1);
-			printf("\n");
-		}
-
-		if (compare(prod, a, size + 1) < 0) {
-			// if (minus * n) < a:
-			sub(a, prod, temp, size + 1); // temp = a - (minus * n)
-			copy(temp, a, size + 1);
-		}
-		rshift(minus, 1, size);
-	}
-	copy(a, dest, size);
-}
-
-
-// a = qn + r. Assume a < n^2 (because every multiplication we mod n)
-// size = log_2(size of n)
-// algorithm: binary search for q
-// stack usage: ~ 6 times size
-void mod(byte *a, byte *n, byte *dest, byte size) {
-
-	mod3(a, n, dest, size);
-	return;
-
-	/*
-	if (DEBUG) {
-		printf("calculating ");
-		print(a, size + 1);
-		printf(" mod ");
-		print(n, size);
-		printf("\n");
-	}
-
-	byte prev[1 << size];
-	byte q_hi[1 << size];
-	byte q_lo[1 << size];
-	byte q_mid[1 << size];
-	byte prod[1 << (size + 1)];
-
-	// changes below are 59338
-	clear(prev, size); // we set this in copy
-	// clear(q_hi, size); // we set this below
-	clear(q_lo, size);
-	// clear(q_mid, size); // gets set in avg
-	clear(prod, size + 1);
-
-	for (int i = 0; i < (1 << size); i++) {
-		q_hi[i] = 0xff;
-	}
-
-	do {
-		copy(q_mid, prev, size);
-		avg(q_hi, q_lo, q_mid, size);
-		mult(q_mid, n, prod, size);
-
-		if (DEBUG) {
-			printf("low: ");
-			print(q_lo, size);
-			printf(" high: ");
-			print(q_hi, size);
-			printf(" mid: ");
-			print(q_mid, size);
-			printf(" a: ");
-			print(a, size + 1);
-			printf(" prod: ");
-			print(prod, size + 1);
-			printf(" n: ");
-			print(n, size);
-			printf("\n");
-		}
-
-		if (compare(prod, a, size + 1) < 0) {
-			copy(q_mid, q_lo, size);
-		} else {
-			copy(q_mid, q_hi, size);
-		}
-	} while (compare(prev, q_mid, size) != 0);
-
-	if (is_const(q_mid, 0, size) == 1) {
-		copy(a, dest, size);
-	} else {
-		sub(a, prod, dest, size);
-	}
-
-	if (DEBUG) {
-		printf("answer: ");
-		print(dest, size);
-		printf("\n");
-	}
-	*/
 }
 
 // compute a^2 mod n and store in dest
@@ -422,9 +298,6 @@ int miller_rabin(byte *p, byte size) {
 	byte d[1 << size];
 	copy(p, d, size);
 
-	// byte two[1 << size];
-	// set(two, 2, size);
-
 	byte a[1 << size];
 	byte dest[1 << size];
 
@@ -451,7 +324,6 @@ int miller_rabin(byte *p, byte size) {
 		int is_witness = 0;
 		for (int s = 0; s < shift; s++) {
 			asqmodn(a, p, dest, size);
-			// admodn(a, two, p, dest, size);
 			copy(dest, a, size);
 
 			p[0] &= 0xfe;
@@ -476,7 +348,8 @@ int miller_rabin(byte *p, byte size) {
 void test() {
 	// about 1 million values
 	// for valgrind, run between 0x30001 and 0x30401
-	for (long n = 0x101; n < 0x40001; n += 2) {
+	for (long n = 0x30001; n < 0x30401; n += 2) {
+	// for (long n = 0x101; n < 0x40001; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
 			printf("skipping %ld \n", n);
 			continue;
