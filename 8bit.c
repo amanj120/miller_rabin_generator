@@ -266,6 +266,7 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 	mod3(a, n, dest, size);
 	return;
 
+	/*
 	if (DEBUG) {
 		printf("calculating ");
 		print(a, size + 1);
@@ -330,6 +331,7 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 		print(dest, size);
 		printf("\n");
 	}
+	*/
 }
 
 // compute a^2 mod n and store in dest
@@ -345,7 +347,7 @@ void asqmodn(byte *a, byte *n, byte *dest, byte size) {
 	byte temp[1 << (size + 1)];
 	clear(temp, size + 1);
 	mult(a, a, temp, size);
-	mod2(temp, n, dest, size);
+	mod(temp, n, dest, size);
 
 	if (DEBUG) {
 		print(a, size);
@@ -473,7 +475,8 @@ int miller_rabin(byte *p, byte size) {
 // exhaustive test of the system
 void test() {
 	// about 1 million values
-	for (long n = 0x101; n < 0x20001; n += 2) {
+	// for valgrind, run between 0x30001 and 0x30401
+	for (long n = 0x101; n < 0x40001; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
 			printf("skipping %ld \n", n);
 			continue;
