@@ -299,7 +299,7 @@ int miller_rabin(byte *p, byte size) {
 	copy(p, d, size);
 
 	byte a[1 << size];
-	byte dest[1 << size];
+	// byte dest[1 << size];
 
 	byte lsb = (p[0] & 0xfe);
 	byte shift = find_lsb_set(lsb);
@@ -311,8 +311,8 @@ int miller_rabin(byte *p, byte size) {
 		}
 
 		set(a, primes[k], size);
-		admodn(a, d, p, dest, size);
-		copy(dest, a, size);
+		admodn(a, d, p, a, size);
+		// copy(dest, a, size);
 
 		p[0] &= 0xfe;
 		eqpm1 = compare(a, p, size);
@@ -323,8 +323,8 @@ int miller_rabin(byte *p, byte size) {
 
 		int is_witness = 0;
 		for (int s = 0; s < shift; s++) {
-			asqmodn(a, p, dest, size);
-			copy(dest, a, size);
+			asqmodn(a, p, a, size);
+			// copy(dest, a, size);
 
 			p[0] &= 0xfe;
 			int eqpm1 = compare(a, p, size);
@@ -348,8 +348,8 @@ int miller_rabin(byte *p, byte size) {
 void test() {
 	// about 1 million values
 	// for valgrind, run between 0x30001 and 0x30401
-	for (long n = 0x30001; n < 0x30401; n += 2) {
-	// for (long n = 0x101; n < 0x40001; n += 2) {
+	// for (long n = 0x30001; n < 0x30401; n += 2) {
+	for (long n = 0x101; n < 0x40001; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
 			printf("skipping %ld \n", n);
 			continue;
@@ -382,6 +382,8 @@ void test() {
 
 // stack usage -> about 20x the size of the prime, need to cut down
 // cut down to 15x, still too much
+// cut down to 9x, getting better; 7 probably the sweet spot
+// cut down to 8x by removing dest in miller rabin
 int main(int argc, char *argv[]) {
 	// byte s1[4] = {0,0,0,0};
 	// byte s2[4] = {0,1,0,0};
