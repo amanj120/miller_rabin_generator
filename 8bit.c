@@ -175,40 +175,55 @@ void mult(byte *src1, byte *src2, byte *dest, byte size) {
 }
 
 void mod(byte * a, byte *n, byte * dest, byte size) {
-	if (DEBUG) {
-		printf("calculating ");
-		print(a, size + 1);
-		printf(" mod ");
-		print(n, size);
-		printf("\n");
-	}
-
-	// byte temp[1 << (size + 1)];
 	byte minus[1 << (size + 1)];
-	// clear(temp, size + 1);
 	clear(minus, size + 1);
 	copy(n, &minus[(1 << size)], size); // shift n (1 << size);
 
 	for (int i = 0; i <= (1 << (size + 3)); i++) {
-
-		if (DEBUG) {
-			printf("minus: ");
-			print(minus, size + 1);
-			printf(" remainder = ");
-			print(a, size + 1);
-			printf("\n");
-		}
-
 		if (compare(minus, a, size + 1) < 0) {
-			// if minus  < a:
-			sub(a, minus, a, size + 1); // temp = a - (minus * n)
-			// copy(temp, a, size + 1);
+			sub(a, minus, a, size + 1); // a -= (n << i)
 		}
 		rshift(minus, 1, size + 1);
 	}
 	copy(a, dest, size);
-
 }
+
+
+// void mod(byte * a, byte *n, byte * dest, byte size) {
+// 	if (DEBUG) {
+// 		printf("calculating ");
+// 		print(a, size + 1);
+// 		printf(" mod ");
+// 		print(n, size);
+// 		printf("\n");
+// 	}
+
+// 	// byte temp[1 << (size + 1)];
+// 	byte minus[1 << (size + 1)];
+// 	// clear(temp, size + 1);
+// 	clear(minus, size + 1);
+// 	copy(n, &minus[(1 << size)], size); // shift n (1 << size);
+
+// 	for (int i = 0; i <= (1 << (size + 3)); i++) {
+
+// 		if (DEBUG) {
+// 			printf("minus: ");
+// 			print(minus, size + 1);
+// 			printf(" remainder = ");
+// 			print(a, size + 1);
+// 			printf("\n");
+// 		}
+
+// 		if (compare(minus, a, size + 1) < 0) {
+// 			// if minus  < a:
+// 			sub(a, minus, a, size + 1); // a -= (n << i)
+// 			// copy(temp, a, size + 1);
+// 		}
+// 		rshift(minus, 1, size + 1);
+// 	}
+// 	copy(a, dest, size);
+
+// }
 
 // compute a^2 mod n and store in dest
 void asqmodn(byte *a, byte *n, byte *dest, byte size) {
@@ -348,8 +363,8 @@ int miller_rabin(byte *p, byte size) {
 void test() {
 	// about 1 million values
 	// for valgrind, run between 0x30001 and 0x30401
-	// for (long n = 0x30001; n < 0x30401; n += 2) {
-	for (long n = 0x101; n < 0x40001; n += 2) {
+	for (long n = 0x30001; n < 0x30401; n += 2) {
+	// for (long n = 0x101; n < 0x40001; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
 			printf("skipping %ld \n", n);
 			continue;
