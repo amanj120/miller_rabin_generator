@@ -50,10 +50,12 @@ void rand_int(byte *dest, byte size) {
 	}
 }
 
+// 50 % of the run time is taken up by rshift
 // shift must be less than 8
 void rshift(byte *src, byte shift, byte size) {
+	byte lshift = (8 - shift);
 	for (int i = 0; i < (1 << size) - 1; i++) {
-		src[i] = src[i] >> shift | src[i + 1] << (8 - shift);
+		src[i] = src[i] >> shift | src[i + 1] << lshift;
 	}
 	src[(1 << size) - 1] >>= shift;
 }
@@ -66,13 +68,12 @@ byte find_lsb_set(byte src) {
 	}
 }
 
-// return -1 if src1 < src2, 1 if src1 > src2, else 0
+// return <0  if src1 < src2, > 0 if src1 > src2, else 0
 int compare(byte *src1, byte *src2, byte size) {
 	for (int i = (1 << size) - 1; i >= 0; i--) {
-		if (src1[i] < src2[i]) {
-			return -1;
-		} else if (src1[i] > src2[i]) {
-			return 1;
+		int t = src1[i] - src2[i];
+		if (t != 0) {
+			return t;
 		}
 	}
 	return 0;
@@ -363,8 +364,8 @@ int miller_rabin(byte *p, byte size) {
 void test() {
 	// about 1 million values
 	// for valgrind, run between 0x30001 and 0x30401
-	for (long n = 0x30001; n < 0x30401; n += 2) {
-	// for (long n = 0x101; n < 0x40001; n += 2) {
+	// for (long n = 0x30001; n < 0x30401; n += 2) {
+	for (long n = 0x101; n < 0x40001; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
 			printf("skipping %ld \n", n);
 			continue;
@@ -436,4 +437,18 @@ int main(int argc, char *argv[]) {
 	// printf("miller rabin 0x10d: %d\n", x);
 
 	test();
+
+	byte * test = calloc(8, 1);
+
+	while (1) {
+		rand_int(test, 3);
+		printf("Testing: ");
+		print(test, 3);
+		printf("\n");
+		if (miller_rabin(test, 3) == 1) {
+			break;
+		}
+	}
+	print(test, 3);
+	printf(" is probably prime!\n");
 }
