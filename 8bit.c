@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +6,7 @@
 #include <time.h>
 
 // 8 bit so it works on AVR
-typedef unsigned char byte;
+typedef uint8_t byte;
 
 #define NP 53
 
@@ -16,32 +17,32 @@ byte primes[NP] = {2,	3,	 5,	  7,   11,	13,	 17,  19,  23,	29,	 31,
 				   197, 199, 211, 223, 227, 229, 233, 239, 241};
 
 // size = size of src in bytes
-void clear(byte *src, int size) {
-	for (int i = 0; i < size; i++) {
+void clear(byte *src, int16_t size) {
+	for (int16_t i = 0; i < size; i++) {
 		src[i] = 0;
 	}
 }
 
-void print(byte *src, int size) {
-	for (int i = size - 1; i >= 0; i--) {
+void print(byte *src, int16_t size) {
+	for (int16_t i = size - 1; i >= 0; i--) {
 		printf("%02x", src[i]);
 	}
 }
 
 // set the first byte in dest to constant, clear the rest
-void set(byte *dest, byte constant, int size) {
+void set(byte *dest, byte constant, int16_t size) {
 	clear(dest, size);
 	dest[0] = constant;
 }
 
-void copy(byte *src, byte *dest, int size) {
-	for (int i = 0; i < size; i++) {
+void copy(byte *src, byte *dest, int16_t size) {
+	for (int16_t i = 0; i < size; i++) {
 		dest[i] = src[i];
 	}
 }
 
-void rand_int(byte *dest, int size) {
-	for (int i = 0; i < size; i++) {
+void rand_int16_t(byte *dest, int16_t size) {
+	for (int16_t i = 0; i < size; i++) {
 		dest[i] = rand() & 0xff;
 	}
 	dest[0] |= 1;
@@ -55,9 +56,9 @@ void rand_int(byte *dest, int size) {
 
 // 50 % of the run time is taken up by rshift
 // shift must be less than 8
-void rshift(byte *src, byte shift, int size) {
+void rshift(byte *src, byte shift, int16_t size) {
 	byte lshift = (8 - shift);
-	for (int i = 0; i < size - 1; i++) {
+	for (int16_t i = 0; i < size - 1; i++) {
 		src[i] = src[i] >> shift | src[i + 1] << lshift;
 	}
 	src[size - 1] >>= shift;
@@ -72,9 +73,9 @@ byte find_lsb_set(byte src) {
 }
 
 // return <0  if src1 < src2, > 0 if src1 > src2, else 0
-int compare(byte *src1, byte *src2, int size) {
-	for (int i = size - 1; i >= 0; i--) {
-		int t = src1[i] - src2[i];
+int16_t compare(byte *src1, byte *src2, int16_t size) {
+	for (int16_t i = size - 1; i >= 0; i--) {
+		int16_t t = src1[i] - src2[i];
 		if (t != 0) {
 			return t;
 		}
@@ -83,9 +84,9 @@ int compare(byte *src1, byte *src2, int size) {
 }
 
 // dest = src1 + src2, returns carry
-byte add(byte *src1, byte *src2, byte *dest, int size) {
+byte add(byte *src1, byte *src2, byte *dest, int16_t size) {
 	byte carry = 0;
-	for (int i = 0; i < size; i++) {
+	for (int16_t i = 0; i < size; i++) {
 		byte t = src1[i] + src2[i] + carry;
 		if (carry == 1) {
 			carry = (t <= src1[i]) ? 1 : 0;
@@ -97,15 +98,15 @@ byte add(byte *src1, byte *src2, byte *dest, int size) {
 	return carry;
 }
 
-void add_const(byte *src, byte value, byte *dest, int size) {
-	for (int i = 0; i < size; i++) {
+void add_const(byte *src, byte value, byte *dest, int16_t size) {
+	for (int16_t i = 0; i < size; i++) {
 		byte t = src[i] + value;
 		value = (t < src[i]) ? 1 : 0;
 		dest[i] = t;
 	}
 }
 
-void avg(byte *src1, byte *src2, byte *dest, int size) {
+void avg(byte *src1, byte *src2, byte *dest, int16_t size) {
 	byte carry = add(src1, src2, dest, size);
 	rshift(dest, 1, size);
 	if (carry) {
@@ -113,11 +114,11 @@ void avg(byte *src1, byte *src2, byte *dest, int size) {
 	}
 }
 
-byte is_const(byte *src, byte constant, int size) {
+byte is_const(byte *src, byte constant, int16_t size) {
 	if (src[0] != constant) {
 		return 0;
 	}
-	for (int i = 1; i < size; i++) {
+	for (int16_t i = 1; i < size; i++) {
 		if (src[i] != 0) {
 			return 0;
 		}
@@ -126,11 +127,11 @@ byte is_const(byte *src, byte constant, int size) {
 }
 
 // dest = src1 - src2, undefined behavior is src1 < src2
-void sub(byte *src1, byte *src2, byte *dest, int size) {
+void sub(byte *src1, byte *src2, byte *dest, int16_t size) {
 	byte t = 0;
-	for (int i = 0; i < size; i++) {
+	for (int16_t i = 0; i < size; i++) {
 		if (src2[i] > src1[i]) { // No out of bounds errors bc src1 > src2
-			for (int j = i + 1; j < size; j++) {
+			for (int16_t j = i + 1; j < size; j++) {
 				if (src1[j] == 0) {
 					src1[j] = 255;
 				} else {
@@ -150,14 +151,14 @@ void sub(byte *src1, byte *src2, byte *dest, int size) {
 // size = log_2(length of src1, src2)
 // size of dest must be twice that of src1 and src2
 // src1 and src2 must be the same size
-void mult(byte *src1, byte *src2, byte *dest, int size) {
+void mult(byte *src1, byte *src2, byte *dest, int16_t size) {
 	clear(dest, size << 1);
-	int idx;
+	int16_t idx;
 	byte carry, temp;
-	for (int i = 0; i < size; i++) {
-		for (int j = 0; j < size; j++) {
+	for (int16_t i = 0; i < size; i++) {
+		for (int16_t j = 0; j < size; j++) {
 			temp = dest[i + j];
-			unsigned int p = src1[i] * src2[j]; // TODO: make this 8 bit
+			int16_t p = src1[i] * src2[j]; // TODO: make this 8 bit
 			carry = (byte)((p >> 8) & 0xff);
 			idx = 1;
 			dest[i + j] += (byte)(p & 0xff);
@@ -173,12 +174,12 @@ void mult(byte *src1, byte *src2, byte *dest, int size) {
 	return;
 }
 
-void mod(byte *a, byte *n, byte *dest, int size) {
+void mod(byte *a, byte *n, byte *dest, int16_t size) {
 	byte minus[size << 1];
 	clear(minus, size << 1);
 	copy(n, &minus[size], size); // minus = n << (1 << size);
 
-	for (int i = 0; i <= (size << 3); i++) {
+	for (int16_t i = 0; i <= (size << 3); i++) {
 		if (compare(minus, a, size << 1) < 0) {
 			sub(a, minus, a, size << 1); // a -= (n << i)
 		}
@@ -188,7 +189,7 @@ void mod(byte *a, byte *n, byte *dest, int size) {
 }
 
 // compute a^2 mod n and store in dest
-void asqmodn(byte *a, byte *n, byte *dest, int size) {
+void asqmodn(byte *a, byte *n, byte *dest, int16_t size) {
 	byte temp[size << 1];
 	clear(temp, size << 1);
 	mult(a, a, temp, size);
@@ -197,7 +198,7 @@ void asqmodn(byte *a, byte *n, byte *dest, int size) {
 
 // compute a^d mod n and store in dest
 // a, d, and n are all 2^size bytes wide
-void admodn(byte *a, byte *d, byte *n, byte *dest, int size) {
+void admodn(byte *a, byte *d, byte *n, byte *dest, int16_t size) {
 	byte cur_a[size];
 	byte prod[size];
 	byte temp[size << 1];
@@ -210,8 +211,8 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, int size) {
 
 	copy(a, cur_a, size); // current = a
 
-	for (int i = 0; i < size; i++) {
-		for (int j = 0; j < 8; j++) {
+	for (int16_t i = 0; i < size; i++) {
+		for (int16_t j = 0; j < 8; j++) {
 			// if exponent set, prod = (prod * cur_a) % n
 			if ((d[i] >> j) & 1 == 1) {
 				mult(cur_a, prod, temp, size);
@@ -225,9 +226,9 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, int size) {
 	copy(prod, dest, size);
 }
 
-// p is the int we are testing for primality
-int miller_rabin(byte *p, int size) {
-	int eqpm1;
+// p is the int16_t we are testing for primality
+int16_t miller_rabin(byte *p, int16_t size) {
+	int16_t eqpm1;
 	byte a[size];
 	byte d[size];
 	copy(p, d, size);
@@ -236,7 +237,7 @@ int miller_rabin(byte *p, int size) {
 	byte shift = find_lsb_set(lsb);
 	rshift(d, shift, size);
 
-	for (int k = 0; k < NP; k++) {
+	for (int16_t k = 0; k < NP; k++) {
 		set(a, primes[k], size);
 		admodn(a, d, p, a, size);
 
@@ -248,12 +249,12 @@ int miller_rabin(byte *p, int size) {
 			continue;
 		}
 
-		int is_witness = 0;
-		for (int s = 0; s < shift; s++) {
+		int16_t is_witness = 0;
+		for (int16_t s = 0; s < shift; s++) {
 			asqmodn(a, p, a, size);
 
 			p[0] &= 0xfe;
-			int eqpm1 = compare(a, p, size);
+			int16_t eqpm1 = compare(a, p, size);
 			p[0] |= 1;
 
 			if (eqpm1 == 0) {
@@ -282,8 +283,8 @@ void test() {
 			continue;
 		}
 
-		int is_prime = 1;
-		for (int d = 3; d * d <= n; d += 2) {
+		int16_t is_prime = 1;
+		for (int16_t d = 3; d * d <= n; d += 2) {
 			if (n % d == 0) {
 				is_prime = 0;
 				break;
@@ -291,7 +292,7 @@ void test() {
 		}
 		byte test[4] = {(n & 0xff), ((n >> 8) & 0xff), ((n >> 16) & 0xff),
 						((n >> 24) & 0xff)};
-		int idx = is_prime + miller_rabin(test, 4);
+		int16_t idx = is_prime + miller_rabin(test, 4);
 
 		if (idx == 0) {
 			// printf("%ld is composite\n", n);
@@ -305,17 +306,17 @@ void test() {
 	}
 }
 
-void find(int size, int print_stuff) {
+void find(int16_t size, int16_t print_stuff) {
 	byte *test = calloc(size, 1);
 
-	int runs = 0;
+	int16_t runs = 0;
 
 	struct timeval start, end;
 
 	gettimeofday(&start, NULL);
 	while (1) {
 		runs++;
-		rand_int(test, size);
+		rand_int16_t(test, size);
 		if (print_stuff) {
 			printf("Testing: ");
 			print(test, size);
@@ -355,22 +356,22 @@ void seed() {
 	struct timeval seed;
 	gettimeofday(&seed, NULL);
 	long s_val = seed.tv_sec * 1000000 + seed.tv_usec;
-	int s_val_int = s_val & (((long)1 << 32) - 1);
-	srand(s_val_int);
+	int16_t s_val_int16_t = s_val & (((long)1 << 32) - 1);
+	srand(s_val_int16_t);
 }
 
 // stack usage -> about 20x the size of the prime, need to cut down
 // cut down to 15x, still too much
 // cut down to 9x, getting better; 7 probably the sweet spot
 // cut down to 8x by removing dest in miller rabin
-int main(int argc, char *argv[]) {
+int16_t main(int16_t argc, char *argv[]) {
 	// test();
 
 	seed();
-	int size = 256;
-	int print_stuff = 0;
+	int16_t size = 256;
+	int16_t print_stuff = 0;
 
-	for (int i = 1; i < argc; i++) {
+	for (int16_t i = 1; i < argc; i++) {
 		if (strncmp(argv[i], "-p", 2) == 0) {
 			print_stuff = 1;
 		} else if (strncmp(argv[i], "-s=", 3) == 0) {
