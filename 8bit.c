@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 
 // 8 bit so it works on AVR
 typedef unsigned char byte;
@@ -300,10 +301,16 @@ void test() {
 	}
 }
 
-void find(int size) {
+void find(int size, int stats) {
 	byte *test = calloc((1 << size), 1);
 
+	int runs = 0;
+
+	struct timeval start, end;
+
+	gettimeofday(&start, NULL);
 	while (1) {
+		runs++;
 		rand_int(test, size);
 		printf("Testing: ");
 		print(test, size);
@@ -312,9 +319,41 @@ void find(int size) {
 			break;
 		}
 	}
+	gettimeofday(&end, NULL);
 
 	print(test, size);
 	printf(" is probably prime!\n");
+
+	long diff = (end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec);
+
+	if (stats) {
+		printf("took %d runs and %ld us\n", runs, diff);
+		printf("%d %ld\n", runs, diff); // for easier parsing
+
+	}
+}
+
+void print_help() {
+	printf("Use this program to generate random probable primes using the miller-rabin algorithm:");
+	// generated because 1 : 4 ^ 54 chance that the number is not prime 
+	printf("\"probable\": less than a 1 in 300,000,000,000,000,000,000,000,000,000,000 (3.2 * 10^32) chance that the output is not prime)\n");
+	// (2 ^ 108) / (2,500,000 L/pool 1000g/1L * 1 mol/ 18 g * 6.022*10^23 molecules/mol) = 3.88
+	printf("to put that into perspective, that's about how many MOLECULES of water there are in 4 olympic sized pools combined.\n");
+	
+	// or '--size=<valid size value>' 
+	printf("\nuse the flag '-s=<valid size value>' to pass in the size of the prime you would like to generate \n");
+	printf("valid values are: \n");
+	printf("\t'1': 16 bit prime\n");
+	printf("\t'2': 32 bit prime\n");
+	printf("\t'3': 64 bit prime\n");
+	printf("\t'4': 128 bit prime\n");
+	printf("\t'5': 256 bit prime\n");
+	printf("\t'6': 512 bit prime\n");
+	printf("\t'7': 1024 bit prime\n");
+	printf("\t'8': 2048 bit prime\n");
+	printf("The default value is 3 (64 bit prime)");
+	// or '--stats'
+	printf("use the flag '-t' to print stats about the run\n");
 }
 
 // stack usage -> about 20x the size of the prime, need to cut down
@@ -322,9 +361,40 @@ void find(int size) {
 // cut down to 9x, getting better; 7 probably the sweet spot
 // cut down to 8x by removing dest in miller rabin
 int main(int argc, char *argv[]) {
-	test();
 
-	srand(time(NULL));
+	struct timeval seed;
+	gettimeofday(&seed, NULL);
+	long s_val = seed.tv_sec * 1000000 + seed.tv_usec;
+	int s_val_int =  s_val & (((long)1 << 32) - 1);
+	srand(s_val_int);
 
-	find(5);
+	int size = 5;
+	int stats = 1;
+
+	if (argc == 2) {
+		if (argv[1][0] == '-' && argv[1][1] == 's' && argv[1][2] == '=') {
+			size = (int)argv[1][3] - 48; // (char)48 = '0';
+			stats = 0;
+		} else if (argv[1][0] == '-' && argv[1][1] == 't') {
+			size = 5;
+			stats = 1;
+		} 
+	} else if (argc == 3) {
+		if (argv[1][0] == '-' && argv[1][1] == 's' && argv[1][2] == '=') {
+			size = (int)argv[1][3] - 48; // (char)48 = '0';
+		}
+		if (argv[1][0] == '-' && argv[1][1] == 't') {
+			stats = 1;
+		} 
+		if (argv[2][0] == '-' && argv[2][1] == 's' && argv[2][2] == '=') {
+			size = (int)argv[1][3] - 48; // (char)48 = '0';
+		}
+		if (argv[2][0] == '-' && argv[2][1] == 't') {
+			stats = 1;
+		} 
+	} else if (argc >= 4) {
+		printf("invalid arguments, continuing with '-s=5 -t'\n");
+	}
+
+	find(size, stats);
 }
