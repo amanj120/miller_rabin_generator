@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 // 8 bit so it works on AVR
 #define DEBUG 0
@@ -360,14 +361,14 @@ int miller_rabin(byte *p, byte size) {
 	return 1;
 }
 
-// exhaustive test of the system
+// somewhat exhaustive test of the system
 void test() {
-	// about 1 million values
 	// for valgrind, run between 0x30001 and 0x30401
 	// for (long n = 0x30001; n < 0x30401; n += 2) {
-	for (long n = 0x101; n < 0x40001; n += 2) {
+	// about ~0.5 million values: 0x101 - 0x100001
+	for (long n = 0x101; n < 0x100001; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
-			printf("skipping %ld \n", n);
+			printf("skipping %ld \r", n);
 			continue;
 		}
 
@@ -394,6 +395,23 @@ void test() {
 			// printf("%ld is prime    \r", n);
 		}
 	}
+}
+
+void find(int size) {
+	byte * test = calloc((1 << size), 1);
+
+	while (1) {
+		rand_int(test, size);
+		printf("Testing: ");
+		print(test, size);
+		printf("\n");
+		if (miller_rabin(test, size) == 1) {
+			break;
+		}
+	}
+
+	print(test, size);
+	printf(" is probably prime!\n");
 }
 
 // stack usage -> about 20x the size of the prime, need to cut down
@@ -438,17 +456,7 @@ int main(int argc, char *argv[]) {
 
 	test();
 
-	byte * test = calloc(8, 1);
+	srand(time(NULL));
 
-	while (1) {
-		rand_int(test, 3);
-		printf("Testing: ");
-		print(test, 3);
-		printf("\n");
-		if (miller_rabin(test, 3) == 1) {
-			break;
-		}
-	}
-	print(test, 3);
-	printf(" is probably prime!\n");
+	
 }
