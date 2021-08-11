@@ -41,7 +41,7 @@ void copy(byte *src, byte *dest, int16_t size) {
 	}
 }
 
-void rand_int16_t(byte *dest, int16_t size) {
+void rand_int(byte *dest, int16_t size) {
 	for (int16_t i = 0; i < size; i++) {
 		dest[i] = rand() & 0xff;
 	}
@@ -139,7 +139,7 @@ void sub(byte *src1, byte *src2, byte *dest, int16_t size) {
 					break;
 				}
 			}
-			t = (255 - (src2[i] - src1[i])) + 1;
+			t = 256 - (src2[i] - src1[i]);
 		} else {
 			t = src1[i] - src2[i];
 		}
@@ -148,7 +148,6 @@ void sub(byte *src1, byte *src2, byte *dest, int16_t size) {
 	return;
 }
 
-// size = log_2(length of src1, src2)
 // size of dest must be twice that of src1 and src2
 // src1 and src2 must be the same size
 void mult(byte *src1, byte *src2, byte *dest, int16_t size) {
@@ -158,7 +157,7 @@ void mult(byte *src1, byte *src2, byte *dest, int16_t size) {
 	for (int16_t i = 0; i < size; i++) {
 		for (int16_t j = 0; j < size; j++) {
 			temp = dest[i + j];
-			int16_t p = src1[i] * src2[j]; // TODO: make this 8 bit
+			int16_t p = src1[i] * src2[j];
 			carry = (byte)((p >> 8) & 0xff);
 			idx = 1;
 			dest[i + j] += (byte)(p & 0xff);
@@ -208,17 +207,15 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, int16_t size) {
 	clear(temp, size << 1);
 
 	set(prod, 1, size);
+	copy(a, cur_a, size);
 
-	copy(a, cur_a, size); // current = a
-
+	// binary exponentiation
 	for (int16_t i = 0; i < size; i++) {
 		for (int16_t j = 0; j < 8; j++) {
-			// if exponent set, prod = (prod * cur_a) % n
 			if ((d[i] >> j) & 1 == 1) {
 				mult(cur_a, prod, temp, size);
 				mod(temp, n, prod, size);
 			}
-			// regardless of whether exponent set:
 			mult(cur_a, cur_a, temp, size);
 			mod(temp, n, cur_a, size);
 		}
@@ -241,7 +238,7 @@ int16_t miller_rabin(byte *p, int16_t size) {
 		set(a, primes[k], size);
 		admodn(a, d, p, a, size);
 
-		p[0] &= 0xfe;
+		p[0] &= 0xfe; // little trick to see if a = p - 1 in place
 		eqpm1 = compare(a, p, size);
 		p[0] |= 1;
 
@@ -270,6 +267,57 @@ int16_t miller_rabin(byte *p, int16_t size) {
 		}
 	}
 	return 1;
+}
+
+void find(int16_t size, int16_t print_stuff) {
+	byte *test = calloc(size, 1);
+	int16_t runs = 0;
+	struct timeval start, end;
+
+	gettimeofday(&start, NULL);
+	while (++runs) {
+		rand_int(test, size);
+		if (print_stuff) {
+			printf("Testing: ");
+			print(test, size);
+			printf("\n");
+		}
+		if (miller_rabin(test, size) == 1) {
+			break;
+		}
+	}
+	gettimeofday(&end, NULL);
+
+	printf("\nFound probable prime:\n");
+	print(test, size);
+	printf("\n");
+
+	long diff = (end.tv_sec * 1000000 + end.tv_usec) -
+				(start.tv_sec * 1000000 + start.tv_usec);
+
+	if (print_stuff) {
+		printf("\ntook %d runs and %ld us\n", runs, diff);
+	}
+}
+
+int16_t help() {
+	const char *help_message =
+		"This program uses the Miller-Rabin algorithm to generate random "
+		"probable primes.\nThere is a less than 1 in 2^106 chance that "
+		"the output is not prime.\nThat's how many molecules of water "
+		"there are in an Olympic sized swimming pool.\n\n\t-s <size> "
+		"to set the size of the generated prime in bits"
+		"\n\n\t-d to print debug info";
+	printf("\n%s\n\n", help_message);
+	return 0;
+}
+
+void seed() {
+	struct timeval seed;
+	gettimeofday(&seed, NULL);
+	long s_val = seed.tv_sec * 1000000 + seed.tv_usec;
+	int16_t s_val_int16_t = s_val & (((long)1 << 32) - 1);
+	srand(s_val_int16_t);
 }
 
 // somewhat exhaustive test of the system
@@ -306,80 +354,25 @@ void test() {
 	}
 }
 
-void find(int16_t size, int16_t print_stuff) {
-	byte *test = calloc(size, 1);
-
-	int16_t runs = 0;
-
-	struct timeval start, end;
-
-	gettimeofday(&start, NULL);
-	while (1) {
-		runs++;
-		rand_int16_t(test, size);
-		if (print_stuff) {
-			printf("Testing: ");
-			print(test, size);
-			printf("\n");
-		}
-		if (miller_rabin(test, size) == 1) {
-			break;
-		}
-	}
-	gettimeofday(&end, NULL);
-
-	printf("\nFound probable prime:\n");
-	print(test, size);
-	printf("\n");
-
-	long diff = (end.tv_sec * 1000000 + end.tv_usec) -
-				(start.tv_sec * 1000000 + start.tv_usec);
-
-	if (print_stuff) {
-		printf("\ntook %d runs and %ld us\n", runs, diff);
-	}
-}
-
-void help() {
-	const char *help_message =
-		"Use this program to generate random probable primes using the\n"
-		"Miller-Rabin algorithm. There is a less than 1 in 2^106\n"
-		"chance that the output is not prime. For reference, that's\n"
-		"how many molecules of water there are in an olympic sized\n"
-		"swimming pool.\n\nUse -s=<size> to pass in the size of the"
-		" prime to generate in bytes.\nThe default is 256.\n\nUse -p"
-		" to print stats and progress about the run.\n";
-	printf("\n%s\n", help_message);
-}
-
-void seed() {
-	struct timeval seed;
-	gettimeofday(&seed, NULL);
-	long s_val = seed.tv_sec * 1000000 + seed.tv_usec;
-	int16_t s_val_int16_t = s_val & (((long)1 << 32) - 1);
-	srand(s_val_int16_t);
-}
-
-// stack usage -> about 20x the size of the prime, need to cut down
-// cut down to 15x, still too much
-// cut down to 9x, getting better; 7 probably the sweet spot
-// cut down to 8x by removing dest in miller rabin
+// total stack usage -> about 8x size of prime
 int16_t main(int16_t argc, char *argv[]) {
 	// test();
 
 	seed();
-	int16_t size = 256;
+	int16_t size = 0;
 	int16_t print_stuff = 0;
 
 	for (int16_t i = 1; i < argc; i++) {
-		if (strncmp(argv[i], "-p", 2) == 0) {
+		if (strncmp(argv[i], "-d", 2) == 0) {
 			print_stuff = 1;
-		} else if (strncmp(argv[i], "-s=", 3) == 0) {
-			size = atoi(&argv[i][3]);
+		} else if (strncmp(argv[i], "-s", 2) == 0) {
+			size = atoi(argv[++i]) >> 3;
 		} else {
-			help();
-			return 0;
+			return help();
 		}
+	}
+	if (size == 0) {
+		return help();
 	}
 
 	find(size, print_stuff);
