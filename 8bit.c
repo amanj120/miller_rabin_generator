@@ -124,7 +124,7 @@ byte is_const(byte * src, byte constant, byte size) {
 	return 1;
 }
 
-// src1 -= src2, undefined behavior is src1 < src2
+//dest = src1 - src2, undefined behavior is src1 < src2
 void sub(byte *src1, byte *src2, byte *dest, byte size) {
 	// printf("in sub\n");
 	for (int i = 0; i < (1 << size); i++) {
@@ -176,11 +176,96 @@ void mult(byte *src1, byte *src2, byte *dest, byte size) {
 	return;
 }
 
+void mod3(byte * a, byte *n, byte * dest, byte size) {
+	if (DEBUG) {
+		printf("calculating ");
+		print(a, size + 1);
+		printf(" mod ");
+		print(n, size);
+		printf("\n");
+	}
+
+	byte temp[1 << (size + 1)];
+	byte minus[1 << (size + 1)];
+	clear(temp, size + 1);
+	clear(minus, size + 1);
+	copy(n, &minus[(1 << size)], size); // shift n (1 << size);
+
+	for (int i = 0; i <= (1 << (size + 3)); i++) {
+
+		if (DEBUG) {
+			printf("minus: ");
+			print(minus, size + 1);
+			printf(" remainder = ");
+			print(a, size + 1);
+			printf("\n");
+		}
+
+		if (compare(minus, a, size + 1) < 0) {
+			// if minus  < a:
+			sub(a, minus, temp, size + 1); // temp = a - (minus * n)
+			copy(temp, a, size + 1);
+		}
+		rshift(minus, 1, size + 1);
+	}
+	copy(a, dest, size);
+
+}
+
+// size is the size of n
+void mod2(byte * a, byte * n, byte * dest, byte size) {
+	if (DEBUG) {
+		printf("calculating ");
+		print(a, size + 1);
+		printf(" mod ");
+		print(n, size);
+		printf("\n");
+	}
+
+	byte minus[1 << size];
+	byte prod[1 << (size + 1)];
+	byte temp[1 << (size + 1)];
+	
+	clear(prod, size + 1);
+	clear(minus, size);
+	minus[(1 << size) - 1] = 0x80; // set the leftmost bit
+	// for (int i = 0; i < (1 << size); i++) {
+	// 	minus[i] = 0xff;
+	// }
+
+	for (int i = 0; i < (1 << (size + 3)); i++) {
+		mult(n, minus, prod, size);
+
+		if (DEBUG) {
+			printf("minus: ");
+			print(minus, size);
+			printf(" n * minus = ");
+			print(prod, size + 1);
+			printf(" remainder = ");
+			print(a, size + 1);
+			printf("\n");
+		}
+
+		if (compare(prod, a, size + 1) < 0) {
+			// if (minus * n) < a:
+			sub(a, prod, temp, size + 1); // temp = a - (minus * n)
+			copy(temp, a, size + 1);
+		}
+		rshift(minus, 1, size);
+	}
+	copy(a, dest, size);
+}
+
+
 // a = qn + r. Assume a < n^2 (because every multiplication we mod n)
 // size = log_2(size of n)
 // algorithm: binary search for q
 // stack usage: ~ 6 times size
 void mod(byte *a, byte *n, byte *dest, byte size) {
+
+	mod3(a, n, dest, size);
+	return;
+
 	if (DEBUG) {
 		printf("calculating ");
 		print(a, size + 1);
@@ -208,7 +293,6 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 
 	do {
 		copy(q_mid, prev, size);
-
 		avg(q_hi, q_lo, q_mid, size);
 		mult(q_mid, n, prod, size);
 
@@ -238,14 +322,36 @@ void mod(byte *a, byte *n, byte *dest, byte size) {
 	if (is_const(q_mid, 0, size) == 1) {
 		copy(a, dest, size);
 	} else {
-		// byte temp[(1 << (size + 1))];
-		// sub(a, prod, temp, size + 1);
-		// copy(temp, dest, size);
 		sub(a, prod, dest, size);
 	}
 
 	if (DEBUG) {
 		printf("answer: ");
+		print(dest, size);
+		printf("\n");
+	}
+}
+
+// compute a^2 mod n and store in dest
+void asqmodn(byte *a, byte *n, byte *dest, byte size) {
+	if (DEBUG) {
+		printf("calculating ");
+		print(a, size);
+		printf(" ^ 2 mod");
+		print(n, size);
+		printf("\n");
+	}
+	
+	byte temp[1 << (size + 1)];
+	clear(temp, size + 1);
+	mult(a, a, temp, size);
+	mod2(temp, n, dest, size);
+
+	if (DEBUG) {
+		print(a, size);
+		printf(" ^ 2 mod");
+		print(n, size);
+		printf(" = ");
 		print(dest, size);
 		printf("\n");
 	}
@@ -281,7 +387,6 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
 				printf("on %d bit, it is%sset\n", i * 8 + j,
 					   (((d[i] >> j) & 1 == 1) ? " " : " not "));
 			}
-
 			// if exponent set, prod = (prod * cur_a) % n
 			if ((d[i] >> j) & 1 == 1) {
 				clear(temp, size);
@@ -310,39 +415,48 @@ void admodn(byte *a, byte *d, byte *n, byte *dest, byte size) {
 
 // p is the int we are testing for primality
 int miller_rabin(byte *p, byte size) {
-	byte pm1[1 << size];
-	byte one[1 << size];
+	int eqpm1;
+	
 	byte d[1 << size];
 	copy(p, d, size);
 
-	set(one, 1, size);
-	sub(p, one, pm1, size);
-	byte shift = find_lsb_set(pm1[0]);
-	rshift(d, shift, size);
+	// byte two[1 << size];
+	// set(two, 2, size);
 
-	byte two[1 << size];
-	set(two, 2, size);
+	byte a[1 << size];
+	byte dest[1 << size];
+
+	byte lsb = (p[0] & 0xfe);
+	byte shift = find_lsb_set(lsb);
+	rshift(d, shift, size);
 
 	for (int k = 0; k < 54; k++) {
 		if (DEBUG) {
 			printf("checking witness: %d\n", primes[k]);
 		}
 
-		byte a[1 << size];
-		byte dest[1 << size];
 		set(a, primes[k], size);
 		admodn(a, d, p, dest, size);
 		copy(dest, a, size);
 
-		if (compare(a, one, size) == 0 || compare(a, pm1, size) == 0) {
+		p[0] &= 0xfe;
+		eqpm1 = compare(a, p, size);
+		p[0] |= 1;
+		if (is_const(a, 1, size) == 1 || eqpm1 == 0) {
 			continue;
 		}
 
 		int is_witness = 0;
 		for (int s = 0; s < shift; s++) {
-			admodn(a, two, p, dest, size);
+			asqmodn(a, p, dest, size);
+			// admodn(a, two, p, dest, size);
 			copy(dest, a, size);
-			if (compare(a, pm1, size) == 0) {
+
+			p[0] &= 0xfe;
+			int eqpm1 = compare(a, p, size);
+			p[0] |= 1;
+
+			if (eqpm1 == 0) {
 				is_witness = 1;
 				break;
 			}
@@ -359,7 +473,7 @@ int miller_rabin(byte *p, byte size) {
 // exhaustive test of the system
 void test() {
 	// about 1 million values
-	for (long n = 0x101; n < 0x40001; n += 2) {
+	for (long n = 0x101; n < 0x20001; n += 2) {
 		if ((n & 0xff) == 0x1) { // we can't handle these cases
 			printf("skipping %ld \n", n);
 			continue;
@@ -391,6 +505,7 @@ void test() {
 }
 
 // stack usage -> about 20x the size of the prime, need to cut down
+// cut down to 15x, still too much
 int main(int argc, char *argv[]) {
 	// byte s1[4] = {0,0,0,0};
 	// byte s2[4] = {0,1,0,0};
@@ -423,9 +538,9 @@ int main(int argc, char *argv[]) {
 	// print(dest, 1);
 	// printf("\n");
 
-	// byte p[4] = {0x03, 0x00, 0x01, 0x00};
+	// byte p[4] = {0x07, 0x01, 0x00, 0x00};
 	// int x = miller_rabin(p, 2);
-	// printf("miller rabin 0x10003: %d\n", x);
+	// printf("miller rabin 0x10d: %d\n", x);
 
 	test();
 }
