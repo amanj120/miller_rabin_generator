@@ -21,7 +21,7 @@ static const char *help_message =
 	"probable primes.\nThere is about a 1 in 2^106 chance that the output "
 	"is not prime.\nThat's how many molecules of water there are in an "
 	"Olympic sized swimming pool.\n\n\t-s <size> to set the size of the "
-	"generated prime in bits\n\n\t-d to print debug info\n\n";
+	"generated prime in bits\n\n\t-d to turn off debug info\n\n";
 
 // size = size of src in bytes
 void clear(byte *src, word size) {
@@ -180,7 +180,13 @@ void mult(byte *src1, byte *src2, byte *dest, word size) {
 	return;
 }
 
+// assume a is twice as big as n
+// a = qn + r for some integer q and some r in [0, n); return r
 void mod(byte *a, byte *n, byte *dest, word size) {
+	if (compare(a, n, size) < 0 && is_const(&a[size], 0, size)) {
+		copy(a, dest, size);
+		return;
+	}
 	byte minus[size << 1];
 	clear(minus, size << 1);
 	copy(n, &minus[size], size); // minus = n << (1 << size);
@@ -295,7 +301,11 @@ void find(word size, word print_stuff) {
 	}
 	gettimeofday(&end, NULL);
 
-	printf("\nFound probable prime:\n");
+	if (print_stuff) {
+		printf("\n");
+	}
+
+	printf("Found probable prime:\n");
 	print(test, size);
 	printf("\n");
 
@@ -356,15 +366,13 @@ void test() {
 
 // total stack usage -> about 8x size of prime
 int main(int argc, char *argv[]) {
-	// test();
-
 	seed();
 	word size = 0;
-	word print_stuff = 0;
+	word print_stuff = 1;
 
 	for (word i = 1; i < argc; i++) {
 		if (strncmp(argv[i], "-d", 2) == 0) {
-			print_stuff = 1;
+			print_stuff = 0;
 		} else if (strncmp(argv[i], "-s", 2) == 0) {
 			size = atoi(argv[++i]) >> 3;
 		} else {
