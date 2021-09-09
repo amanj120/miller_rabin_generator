@@ -282,6 +282,32 @@ word miller_rabin(byte *p, word size) {
 	return 1;
 }
 
+void parallel_find(word size) {
+	byte found = 0;
+
+	#pragma omp parallel for
+	for (int i = 0; i < 1 << 10; ++i) {
+		if (found == 0) {
+			// byte *test = calloc(size, 1);
+			byte test[size];
+			rand_int(test, size);
+			// printf("Testing: ");
+			// print(test, size);
+			// printf("\n");
+			if (found == 0 && miller_rabin(test, size) == 1) {
+				if (found == 0){
+					printf("Found probable prime:\n");
+					print(test, size);
+					printf("\n");
+					found = 1;
+				}
+			}
+			// free(test);
+		}
+		
+	}
+}
+
 void find(word size, word print_stuff) {
 	byte *test = calloc(size, 1);
 	word runs = 0;
@@ -315,6 +341,8 @@ void find(word size, word print_stuff) {
 	if (print_stuff) {
 		printf("\ntook %d runs and %ld us\n", runs, diff);
 	}
+
+	free(test);
 }
 
 word help() {
@@ -384,4 +412,5 @@ int main(int argc, char *argv[]) {
 	}
 
 	find(size, print_stuff);
+	// parallel_find(size);
 }
