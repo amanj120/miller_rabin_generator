@@ -47,7 +47,6 @@ unit rand_unit() {
 	unit l2 = rand() & 0xff;
 	unit l3 = rand() & 0xff;
 	unit l4 = rand() & 0xff;
-
 	return (unit)(l1 | (l2 << 8) | (l3 << 16) | (l4 << 24));
 }
 
@@ -60,7 +59,7 @@ void rand_int(unit *dest, unit size) {
 	// dest[size - 1] |= 0x80000000; //pinning the msb to be 1
 }
 
-// 50 % of the run time is taken up by rshift
+// 50 % of the run time is taken up by rshift of 1 unit
 // shift must be less than 32
 void rshift(unit *src, unit shift, unit size) {
 	unit lshift = (32 - shift);
@@ -70,16 +69,12 @@ void rshift(unit *src, unit shift, unit size) {
 	src[size - 1] >>= shift;
 }
 
-// ecc2f6c3
-// 3ecf2709
-
-// unit find_lsb_set(unit src) {
-// 	for (unit i = 0; i < 32; i++) {
-// 		if ((src >> i) & 1 == 1) {
-// 			return i;
-// 		}
-// 	}
-// }
+void rshift1(unit *src, unit size) {
+	for (unit i = 0; i < size - 1; i++) {
+		src[i] = (src[i] >> 1) | (src[i + 1]  << 31);
+	}
+	src[size - 1] >>= 1;
+}
 
 // return <0  if src1 < src2, > 0 if src1 > src2, else 0
 sunit compare(unit *src1, unit *src2, unit size) {
@@ -192,7 +187,7 @@ void mod(unit *a, unit *n, unit *dest, unit size) {
 		if (compare(minus, a, bigsize) < 0) {
 			sub(a, minus, a, bigsize); // a -= (n << i)
 		}
-		rshift(minus, 1, bigsize);
+		rshift1(minus, bigsize);
 	}
 	copy(a, dest, size);
 }
