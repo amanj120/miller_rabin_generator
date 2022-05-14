@@ -113,13 +113,13 @@ void add_const(byte *src, byte value, byte *dest, word size) {
 	}
 }
 
-void avg(byte *src1, byte *src2, byte *dest, word size) {
-	byte carry = add(src1, src2, dest, size);
-	rshift(dest, 1, size);
-	if (carry) {
-		dest[size - 1] |= 0x8f; // set the msb
-	}
-}
+// void avg(byte *src1, byte *src2, byte *dest, word size) {
+// 	byte carry = add(src1, src2, dest, size);
+// 	rshift(dest, 1, size);
+// 	if (carry) {
+// 		dest[size - 1] |= 0x80; // set the msb
+// 	}
+// }
 
 byte is_const(byte *src, byte constant, word size) {
 	if (src[0] != constant) {
@@ -285,7 +285,7 @@ word miller_rabin(byte *p, word size) {
 void parallel_find(word size) {
 	byte found = 0;
 
-	#pragma omp parallel for
+#pragma omp parallel for
 	for (int i = 0; i < 1 << 10; ++i) {
 		if (found == 0) {
 			// byte *test = calloc(size, 1);
@@ -295,7 +295,7 @@ void parallel_find(word size) {
 			// print(test, size);
 			// printf("\n");
 			if (found == 0 && miller_rabin(test, size) == 1) {
-				if (found == 0){
+				if (found == 0) {
 					printf("Found probable prime:\n");
 					print(test, size);
 					printf("\n");
@@ -304,7 +304,6 @@ void parallel_find(word size) {
 			}
 			// free(test);
 		}
-		
 	}
 }
 
