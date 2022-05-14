@@ -20,15 +20,8 @@ static const char *help_message =
 
 // size = size of src in units
 void clear(unit *src, unit size) {
-	for (unit i = 0; i < size; i++) {
+	for (unit i = 0; i < size; i++)
 		src[i] = 0;
-	}
-}
-
-void print(unit *src, unit size) {
-	for (sunit i = size - 1; i >= 0; i--) {
-		printf("%08x", src[i]);
-	}
 }
 
 // set the first unit in dest to constant, clear the rest
@@ -38,10 +31,15 @@ void set(unit *dest, unit constant, unit size) {
 }
 
 void copy(unit *src, unit *dest, unit size) {
-	for (unit i = 0; i < size; i++) {
+	for (unit i = 0; i < size; i++)
 		dest[i] = src[i];
-	}
 }
+
+void print(unit *src, unit size) {
+	for (sunit i = size - 1; i >= 0; i--)
+		printf("%08x", src[i]);
+}
+
 unit rand_unit() {
 	unit l1 = rand() & 0xff;
 	unit l2 = rand() & 0xff;
@@ -56,17 +54,6 @@ void rand_int(unit *dest, unit size) {
 		dest[i] = rand_unit();
 	}
 	dest[0] |= 3; // we're pinning the 2nd least bit to be 1 so that the miller rabin test is easier to do
-	// dest[size - 1] |= 0x80000000; //pinning the msb to be 1
-}
-
-// 50 % of the run time is taken up by rshift of 1 unit
-// shift must be less than 32
-void rshift(unit *src, unit shift, unit size) {
-	unit lshift = (32 - shift);
-	for (unit i = 0; i < size - 1; i++) {
-		src[i] = src[i] >> shift | src[i + 1] << lshift;
-	}
-	src[size - 1] >>= shift;
 }
 
 void rshift1(unit *src, unit size) {
@@ -113,14 +100,11 @@ void add_const(unit *src, unit value, unit *dest, unit size) {
 }
 
 unit is_const(unit *src, unit constant, unit size) {
-	if (src[0] != constant) {
+	if (src[0] != constant)
 		return 0;
-	}
-	for (unit i = 1; i < size; i++) {
-		if (src[i] != 0) {
+	for (unit i = 1; i < size; i++)
+		if (src[i] != 0)
 			return 0;
-		}
-	}
 	return 1;
 }
 
@@ -192,14 +176,6 @@ void mod(unit *a, unit *n, unit *dest, unit size) {
 	copy(a, dest, size);
 }
 
-// compute a^2 mod n and store in dest
-// void asqmodn(unit *a, unit *n, unit *dest, unit size) {
-// 	unit temp[size << 1];
-// 	clear(temp, size << 1);
-// 	mult(a, a, temp, size);
-// 	mod(temp, n, dest, size);
-// }
-
 // compute a^d mod n and store in dest
 // a, d, and n are all 2^size units wide
 void admodn(unit *a, unit *d, unit *n, unit *dest, unit size) {
@@ -236,7 +212,7 @@ unit miller_rabin(unit *p, unit size) {
 
 	unit d[size];
 	copy(p, d, size);
-	rshift(d, 1, size); // because we know the 2nd least bit is a 1
+	rshift1(d, size); // because we know the 2nd least bit is a 1
 
 	for (unit k = 0; k < NP; k++) {
 		set(a, bases[k], size);
@@ -254,31 +230,6 @@ unit miller_rabin(unit *p, unit size) {
 	}
 	return 1;
 }
-
-// void parallel_find(unit size) {
-// 	unit found = 0;
-
-// #pragma omp parallel for
-// 	for (int i = 0; i < 1 << 10; ++i) {
-// 		if (found == 0) {
-// 			// unit *test = calloc(size, 1);
-// 			unit test[size];
-// 			rand_int(test, size);
-// 			// printf("Testing: ");
-// 			// print(test, size);
-// 			// printf("\n");
-// 			if (found == 0 && miller_rabin(test, size) == 1) {
-// 				if (found == 0) {
-// 					printf("Found probable prime:\n");
-// 					print(test, size);
-// 					printf("\n");
-// 					found = 1;
-// 				}
-// 			}
-// 			// free(test);
-// 		}
-// 	}
-// }
 
 void find(unit size, unit print_stuff) {
 	unit *test = (unit *)calloc(size, sizeof(unit));
@@ -299,25 +250,16 @@ void find(unit size, unit print_stuff) {
 	}
 	gettimeofday(&end, NULL);
 
-	if (print_stuff) {
-		printf("\n");
-	}
-
-	printf("Found probable prime:\n");
+	printf("\nFound probable prime:\n");
 	print(test, size);
-	printf("\n");
-
 	long diff = (end.tv_sec * 1000000 + end.tv_usec) -
 				(start.tv_sec * 1000000 + start.tv_usec);
-
-	if (print_stuff) {
-		printf("\ntook %d runs and %ld us\n", runs, diff);
-	}
+	printf("\n\ntook %d runs and %ld us\n", runs, diff);
 
 	free(test);
 }
 
-unit help() {
+int help() {
 	printf("%s", help_message);
 	return 0;
 }
@@ -328,40 +270,6 @@ void seed() {
 	long s_val = seed.tv_sec * 1000000 + seed.tv_usec;
 	unit s_val_unit = s_val & (((long)1 << 32) - 1);
 	srand(s_val_unit);
-}
-
-// somewhat exhaustive test of the system
-void test() {
-	// for valgrind, run between 0x30001 and 0x30401
-	// for (long n = 0x30001; n < 0x30401; n += 2) {
-	// about ~0.5 million values: 0x101 - 0x100001
-	for (long n = 0x101; n < 0x100001; n += 2) {
-		if ((n & 0xffffffff) == 0x1) { // we can't handle these cases
-			printf("skipping %ld \n", n);
-			continue;
-		}
-
-		unit is_prime = 1;
-		for (unit d = 3; d * d <= n; d += 2) {
-			if (n % d == 0) {
-				is_prime = 0;
-				break;
-			}
-		}
-		unit test[4] = {(n & 0xff), ((n >> 8) & 0xff), ((n >> 16) & 0xff),
-						((n >> 24) & 0xff)};
-		unit idx = is_prime + miller_rabin(test, 4);
-
-		if (idx == 0) {
-			// printf("%ld is composite\n", n);
-		} else if (idx == 1) {
-			printf("%ld: prime: %d miller rabin: %d\n", n, is_prime,
-				   idx - is_prime);
-			break;
-		} else {
-			// printf("%ld is prime\n", n);
-		}
-	}
 }
 
 // total stack usage -> about 8x size of prime
