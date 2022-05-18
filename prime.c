@@ -307,6 +307,38 @@ void parallel_find(word size) {
 	}
 }
 
+void find_twins(word size) {
+	byte *test = calloc(size, 1);
+	word runs = 0;
+	struct timeval start, end;
+
+	gettimeofday(&start, NULL);
+	while (++runs) {
+		rand_int(test, size);
+		printf("Testing: ");
+		print(test, size);
+		printf("\n");
+		if (miller_rabin(test, size) == 1) {
+			printf("Found probable prime:\n");
+			print(test, size);
+			printf("\n");
+			add_const(test, 2, test, size);
+			if (miller_rabin(test, size) == 1) {
+				printf("Found probable twin prime:\n");
+				print(test, size);
+				printf("\n");
+				gettimeofday(&end, NULL);
+				long diff = (end.tv_sec * 1000000 + end.tv_usec) -
+				(start.tv_sec * 1000000 + start.tv_usec);
+				printf("\ntook %d runs and %ld us\n", runs, diff);
+				free(test);
+				return;
+			}
+		}
+	}
+}
+
+
 void find(word size, word print_stuff) {
 	byte *test = calloc(size, 1);
 	word runs = 0;
@@ -396,12 +428,15 @@ int main(int argc, char *argv[]) {
 	seed();
 	word size = 0;
 	word print_stuff = 1;
+	int twins = 0;
 
 	for (word i = 1; i < argc; i++) {
 		if (strncmp(argv[i], "-d", 2) == 0) {
 			print_stuff = 0;
 		} else if (strncmp(argv[i], "-s", 2) == 0) {
 			size = atoi(argv[++i]) >> 3;
+		} else if (strncmp(argv[i], "-t", 2) == 0) {
+			twins = 1;
 		} else {
 			return help();
 		}
@@ -410,6 +445,10 @@ int main(int argc, char *argv[]) {
 		return help();
 	}
 
-	find(size, print_stuff);
+	if (twins == 1) {
+		find_twins(size);
+	} else {
+		find(size, print_stuff);
+	}
 	// parallel_find(size);
 }
