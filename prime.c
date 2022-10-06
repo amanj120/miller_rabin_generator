@@ -329,7 +329,7 @@ void find_twins(word size) {
 				printf("\n");
 				gettimeofday(&end, NULL);
 				long diff = (end.tv_sec * 1000000 + end.tv_usec) -
-				(start.tv_sec * 1000000 + start.tv_usec);
+							(start.tv_sec * 1000000 + start.tv_usec);
 				printf("\ntook %d runs and %ld us\n", runs, diff);
 				free(test);
 				return;
@@ -337,7 +337,6 @@ void find_twins(word size) {
 		}
 	}
 }
-
 
 void find(word size, word print_stuff) {
 	byte *test = calloc(size, 1);
